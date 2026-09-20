@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """hw_discovery.py - source de verite materielle (Phase B, v2).
 
+⚠️ CIBLE MATERIELLE : Ryzen 9 HX 365 (XDNA2) + RTX 5070 8 GB (Blackwell sm_120).
+La machine dev (ex. GTX 1080 sm_61) sert UNIQUEMENT de test logique - ses valeurs
+sont des ORDRES DE GRANDEUR, jamais des predictions pour la cible.
+
 Produit un HardwareProfile ou chaque valeur porte sa provenance :
   MEASURED : mesure reelle (nvidia-smi, microbench, ...)
   DERIVED  : calculee depuis une mesure (ex. vram_available = total - wddm_reserve)
@@ -17,6 +21,8 @@ import platform
 import subprocess
 import sys
 import time
+
+TARGET = "Ryzen 9 HX 365 (XDNA2) + RTX 5070 8GB (Blackwell sm_120)"
 
 
 def _run(cmd):
@@ -124,6 +130,8 @@ def main():
 
     profile = {
         "timestamp": ts,
+        "target_hardware": TARGET,
+        "dev_machine_note": "Ce profil = machine dev (test logique). La cible (HX365+5070 8GB) doit etre re-mesuree.",
         "cpu": detect_cpu_ram(),
         "gpu": gpu,
         "ssd": detect_ssd(),
