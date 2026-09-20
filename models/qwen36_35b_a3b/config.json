@@ -1,5 +1,6 @@
 {
-  "model_type": "qwen3_6_moe",
+  "model_type": "qwen3_5_moe",
+  "nomenclature_warning": "Sources officielles = Qwen3.5-35B-A3B (config qwen3_5_moe). 'Qwen3.6-35B-A3B' = nom utilise dans branches llama.cpp experimentales. VERROUILLER le checkpoint exact avant de figer l'oracle.",
   "hidden_size": 2048,
   "moe_intermediate_size": 512,
   "num_experts": 256,
@@ -13,8 +14,23 @@
   "context_length": 262144,
   "gated_delta_net_layers": 30,
   "gated_attention_layers": 10,
+  "layer_pattern": "linear_attention x3 + full_attention, repete 10 fois",
+  "linear_num_key_heads": 16,
+  "linear_num_value_heads": 32,
+  "linear_head_dim": 128,
   "ratio": "3 DeltaNet : 1 Attention",
+  "mtp_num_hidden_layers": 1,
+  "multimodal": {
+    "has_vision": true,
+    "vision_config": {"depth": 27, "hidden_size": 1152, "intermediate_size": 4304},
+    "profiles": ["Q35-TEXT", "Q35-MM"]
+  },
   "total_params_est": 35e9,
   "active_params_est": 3e9,
-  "note": "Faits documentes Qwen3.6-35B-A3B. A verifier contre le checkpoint reel (config.json + convert.log) avant de figer les tailles GGUF."
+  "gguf_sizes_public": {
+    "note": "VARIENT selon quantizer - NE PAS figer, extraire du GGUF reel",
+    "Q4_K_M_GB": 22.29, "Q4_K_S_GB": 21.49, "Q4_0_GB": 20.84,
+    "IQ4_XS_GB": 19.70, "Q3_K_XL_GB": 18.22
+  },
+  "note": "Faits documentes. A verifier contre le checkpoint/convert.log reel avant de figer."
 }

@@ -20,17 +20,26 @@ from bytes_per_token import bytes_moe_active
 EXPERT_PARAMS = 4_915_200
 
 
-def score(plan, lambdas=None, cache_hit=0.9):
-    """score = latency + l1*PCIe_bytes + l2*conversion + l3*sync + l4*memory_pressure."""
+def score(plan, lambdas=None, cache_hit=0.9, overlap=0.0, planner_overhead_us=50.0):
+    """T(plan) = T_route+T_SSD+T_RAM+T_PCIe+T_DMA+T_conversion+T_compute+T_sync - T_overlap.
+
+    Corrections angle morts 21/52/66 :
+    - T_overlap soustrait le chevauchement (DMA masque par compute)
+    - planner_overhead_us : ne pas replan chaque token si planning > savings
+    - CACHE=OFF possible : cache_hit=0 (miss_rate=1) est une vraie strategie
+    """
     if lambdas is None:
         lambdas = {"l1": 1e-3, "l2": 1e-3, "l3": 1e-3, "l4": 1e-3}
     active = bytes_moe_active(48, 10, EXPERT_PARAMS, plan.fmt)["total_bytes"]
     miss_b = active * (1.0 - cache_hit)
     pcie_bytes = miss_b
-    # latency approx : transfert miss / BW + GEMM (placeholder)
+    # latence : transfert miss / BW + GEMM (placeholder) + sync + overhead planner
     t_transfer = miss_b / (plan.pcie_bw_gbs * 1e9)
     t_gemm = 1e-3  # placeholder
-    latency = t_transfer + t_gemm
+    t_sync = 0.2e-3  # placeholder
+    t_overlap = overlap * t_transfer  # part du transfert masquee
+    t_planner = planner_overhead_us * 1e-6
+    latency = t_transfer + t_gemm + t_sync - t_overlap + t_planner
     return {
         "name": plan.name,
         "fmt": plan.fmt,
@@ -38,6 +47,9 @@ def score(plan, lambdas=None, cache_hit=0.9):
         "latency_s": latency,
         "pcie_bytes_token": pcie_bytes,
         "memory_pressure_gib": plan.vram_needed_gib,
+        "cache_hit": cache_hit,
+        "t_overlap_s": t_overlap,
+        "t_planner_s": t_planner,
         "score": latency + lambdas["l1"] * pcie_bytes + lambdas["l4"] * plan.vram_needed_gib,
         "confidence": 0.5,  # ASSUMED -> calibration requise
         "samples": 0,

@@ -38,11 +38,19 @@ def run():
     ppe = expert_params(h, i)
 
     out = {"model": "Qwen3.6-35B-A3B",
+           "nomenclature_warning": cfg.get("nomenclature_warning", ""),
            "faits_documentes": cfg,
            "derivations": {}}
     out["derivations"]["params_per_expert"] = ppe
     out["derivations"]["total_experts"] = nl * ne
     out["derivations"]["total_expert_params"] = nl * ne * ppe
+
+    # layer_type[layer_id] : 30 GDN + 10 Attention (3:1)
+    out["derivations"]["layer_type"] = {
+        "pattern": "linear x3 + full, x10",
+        "gdN_layers": cfg.get("gated_delta_net_layers", 30),
+        "attention_layers": cfg.get("gated_attention_layers", 10),
+    }
 
     # tailles expert par format
     sizes = {}
@@ -62,7 +70,17 @@ def run():
     out["derivations"]["cache_traffic"] = {}
     for hit in [0.50, 0.75, 0.90, 0.95, 0.99]:
         out["derivations"]["cache_traffic"][f"hit{int(hit*100)}"] = {
-            "mib_token": round(cold["Q4"]["mib_token"] * (1 - hit), 2)}
+            "mib_token": round(cold["Q4"]["mib_token"] * (1 - hit), 2),
+            "byte_hit_rate_note": "byte_hit_rate = hit_bytes/requested_bytes - a mesurer (count hit != byte hit)"}
+
+    # provenance + confiance (correction angle mort 46/65)
+    out["provenance"] = {
+        "faits_documentes": "MEASURED_source", "derivations": "DERIVED",
+        "gguf_sizes_public": "ASSUMED (a verifier GGUF reel)",
+        "bandwidth": "ASSUMED/UNKNOWN (mesures profiler-v3 requises)",
+        "confidence": {"static_bounds": 0.8, "traffic": 0.6, "latency": 0.3},
+        "model_hash": "UNKNOWN (a extraire du checkpoint)",
+    }
 
     # lower bounds (placeholder BW - a remplacer par mesures profiler-v3)
     out["derivations"]["lower_bounds_placeholder"] = {

@@ -26,7 +26,8 @@ EXPERT_PARAMS = 4_915_200
 class Plan:
     def __init__(self, name, fmt, experts_cache, device, ctx=8192,
                  vram_needed_gib=6.0, l1_footprint=32 * 1024,
-                 pcie_bw_gbs=12.0, workspace_gib=0.5):
+                 pcie_bw_gbs=12.0, workspace_gib=0.5,
+                 resident_weights_gib=1.0, kv_state_gib=0.3):
         self.name = name
         self.fmt = fmt
         self.experts_cache = experts_cache
@@ -36,6 +37,16 @@ class Plan:
         self.l1_footprint = l1_footprint
         self.pcie_bw_gbs = pcie_bw_gbs
         self.workspace_gib = workspace_gib
+        self.resident_weights_gib = resident_weights_gib
+        self.kv_state_gib = kv_state_gib
+
+
+def cache_budget(vram_available_gib, plan):
+    """Correction angle mort 11 : cache_budget = VRAM - weights - KV/state - workspace - runtime.
+    PAS '6.5 - weights'. Le cache ne doit pas voler le compute."""
+    runtime = 0.3
+    return vram_available_gib - plan.resident_weights_gib - plan.kv_state_gib \
+        - plan.workspace_gib - runtime
 
 
 def check(plan, vram_available_gib=6.5, cache_hit=0.9):
@@ -45,11 +56,14 @@ def check(plan, vram_available_gib=6.5, cache_hit=0.9):
         reasons.append(f"VRAM {plan.vram_needed_gib} GiB > dispo {vram_available_gib}")
     if plan.l1_footprint > L1_CORE_BYTES:
         reasons.append(f"L1 tile {plan.l1_footprint} B > {L1_CORE_BYTES} B")
+    # cache_budget doit etre >= 0 et >= experts_cache utilise
+    cb = cache_budget(vram_available_gib, plan)
+    if cb < 0:
+        reasons.append(f"cache_budget {cb:.2f} GiB < 0 (VRAM volee par weights/KV/workspace)")
     # lower-bound PCIe : actif/token * (1-hit) / BW
     active = bytes_moe_active(48, 10, EXPERT_PARAMS, plan.fmt)["total_bytes"]
     miss_b = active * (1.0 - cache_hit)
     t_miss = miss_b / (plan.pcie_bw_gbs * 1e9)
-    # fenetre raisonnable : >= 4 t/s objectif
     if t_miss > 0.25:
         reasons.append(f"PCIe lower-bound {t_miss*1e3:.0f} ms/token > 250 ms (cache {cache_hit:.0%})")
     if plan.workspace_gib <= 0:
