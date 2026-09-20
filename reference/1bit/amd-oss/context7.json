@@ -1,0 +1,14 @@
+{
+  "folders": ["docs"],
+  "excludeFolders": [],
+  "excludeFiles": ["README.md"],
+  "rules": [
+    "The complete AMD NPU chain, verified bit-exact at every hop: PyTorch (Brevitas) → QONNX → FINN → RTL/HLS → chip/RTL simulation → stitched FPGA — see DESCENT.md",
+    "The NPU stack substrate is MLIR-AIE; MLIR-AIR is NOT the shared substrate (IRON bypasses AIR entirely, zero air.* imports)",
+    "IRON is the close-to-metal Python API for Ryzen AI NPUs; Triton-XDNA is the Triton frontend to XDNA NPUs",
+    "FastFlowLM is AMD's NPU-native runtime (built on IRON): whole-model-on-NPU, xclbins + XDNA driver plugin, 256k context, Qwen3.6-35B-A3B streaming",
+    "The HRX2 llama.cpp fork research (zero-copy decode +10-49%, pp32 prefill regression 121.5→27.8) lives in the 1bit-MONSTER repo under research/ws12-hrx-loom, not in this repo",
+    "The deterministic bit-exact (corr=1.0) path is the fixed-point 1BP pipeline (FastFlowLM amd-oss/), not the float pipeline",
+    "All DESCENT/ANALYSIS claims are hardware-verified on strixhalo (Ryzen AI Max+ 395, gfx1151, XDNA 2 NPU) unless marked otherwise"
+  ]
+}

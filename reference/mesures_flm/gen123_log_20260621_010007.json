@@ -1,0 +1,217 @@
+{
+  "timestamp": "20260621_010007",
+  "run": {
+    "model": "qwen3.5:9b",
+    "params": {
+      "params_B": 9.0,
+      "bits": 4,
+      "w_gb": 2.928
+    },
+    "w_eff_gb": 2.928,
+    "theory": {
+      "bw_eff_GBs": 21.927,
+      "eta": 0.7309,
+      "kv_bytes_per_tok": 30000,
+      "prefill_tps_npu": 202.1,
+      "decode_tps_npu": 7.49,
+      "decode_tps_npu_ctx100": 7.48,
+      "ttft_g1_ms": 247.3,
+      "ttft_g2_ms": 0.0,
+      "ttft_g3_ms": 0.0,
+      "ridge_INT4": 1596.2055912801568,
+      "ridge_INT8": 2280.2937018287957,
+      "ridge_FP16": 547.2704884389109,
+      "TOPS_INT4": 35.0,
+      "kv_limit_max_ctx": 249624
+    },
+    "soc_matrix": {
+      "ctx_ref": 100,
+      "decode_tps_ref": 12.2,
+      "prefill_tps_ref": 338.22,
+      "ttft_ref_s": 3.5
+    },
+    "gen1": {
+      "ok": true,
+      "ttft_avg": 4023.6,
+      "ttft_min": 4023.6,
+      "ttft_max": 4023.6,
+      "ttft_std": 0,
+      "decode_tps": 7.6,
+      "prefill_tps_api": 30.1,
+      "tps_source": "api_usage",
+      "chunks_avg": 100,
+      "total_s": 17.0,
+      "n_ok": 1,
+      "corrupted": false,
+      "corruption_reason": [],
+      "api_usage_sample": {
+        "prompt_tokens": 43,
+        "completion_tokens": 100,
+        "total_tokens": 143,
+        "active_kv_tokens": 143,
+        "max_kv_token_capacity": 16384,
+        "kv_token_occupancy_rate_percentage": 0.872802734375,
+        "load_duration": 7e-07,
+        "prefill_duration_ttft": 1.427718656,
+        "decoding_duration": 13.15118,
+        "prefill_speed_tps": 30.117978650269873,
+        "decoding_speed_tps": 7.60388041225198
+      }
+    },
+    "gen2": {
+      "ok": true,
+      "ttft_avg": 3998.5,
+      "ttft_min": 3998.5,
+      "ttft_max": 3998.5,
+      "ttft_std": 0,
+      "decode_tps": 7.61,
+      "prefill_tps_api": 24.4,
+      "tps_source": "api_usage",
+      "chunks_avg": 100,
+      "total_s": 17.0,
+      "n_ok": 1,
+      "corrupted": false,
+      "corruption_reason": [],
+      "api_usage_sample": {
+        "prompt_tokens": 34,
+        "completion_tokens": 100,
+        "total_tokens": 134,
+        "active_kv_tokens": 134,
+        "max_kv_token_capacity": 16384,
+        "kv_token_occupancy_rate_percentage": 0.81787109375,
+        "load_duration": 5e-07,
+        "prefill_duration_ttft": 1.391187072,
+        "decoding_duration": 13.142984,
+        "prefill_speed_tps": 24.439560059396527,
+        "decoding_speed_tps": 7.608622212429079
+      }
+    },
+    "gen3": {
+      "ok": true,
+      "ttft_avg": 4008.2,
+      "ttft_min": 4008.2,
+      "ttft_max": 4008.2,
+      "ttft_std": 0,
+      "decode_tps": 7.6,
+      "prefill_tps_api": 46.4,
+      "tps_source": "api_usage",
+      "chunks_avg": 100,
+      "total_s": 17.0,
+      "n_ok": 1,
+      "corrupted": false,
+      "corruption_reason": [],
+      "api_usage_sample": {
+        "prompt_tokens": 66,
+        "completion_tokens": 100,
+        "total_tokens": 166,
+        "active_kv_tokens": 166,
+        "max_kv_token_capacity": 16384,
+        "kv_token_occupancy_rate_percentage": 1.01318359375,
+        "load_duration": 5e-07,
+        "prefill_duration_ttft": 1.422590848,
+        "decoding_duration": 13.151472,
+        "prefill_speed_tps": 46.394225080801306,
+        "decoding_speed_tps": 7.603711584528333
+      }
+    },
+    "diagnostic": {
+      "backend": "NPU XDNA2",
+      "bw_measured_GBs": 22.28,
+      "bw_ratio_pct": 101.6,
+      "delta_bw_GBs": -0.35,
+      "gain_if_npu_x": 1.0,
+      "ridge_position": "memory-bound  (AI=1573 < ridge=1596)",
+      "prefill_tps_real": 30.1,
+      "prefill_tps_source": "api_usage",
+      "prefill_ratio_pct": 14.9,
+      "tps_ratio_pct": 101.5,
+      "tps_source_g1": "api_usage",
+      "ttft_ratio": 16.27,
+      "kv_status": "ABSENT",
+      "kv_gain2_pct": 0.6,
+      "kv_gain3_pct": 0.4,
+      "kv_loss_ms": 4023.6,
+      "throttle_level": 0
+    }
+  },
+  "raw": {
+    "gen1": [
+      {
+        "ok": true,
+        "ttft_ms": 4023.6,
+        "total_ms": 17034.2,
+        "decode_ms": 13010.6,
+        "decode_tps": 7.6,
+        "prefill_tps": 30.12,
+        "tps_source": "api_usage",
+        "chunks": 100,
+        "api_usage": {
+          "prompt_tokens": 43,
+          "completion_tokens": 100,
+          "total_tokens": 143,
+          "active_kv_tokens": 143,
+          "max_kv_token_capacity": 16384,
+          "kv_token_occupancy_rate_percentage": 0.872802734375,
+          "load_duration": 7e-07,
+          "prefill_duration_ttft": 1.427718656,
+          "decoding_duration": 13.15118,
+          "prefill_speed_tps": 30.117978650269873,
+          "decoding_speed_tps": 7.60388041225198
+        },
+        "error": null
+      }
+    ],
+    "gen2": [
+      {
+        "ok": true,
+        "ttft_ms": 3998.5,
+        "total_ms": 16987.5,
+        "decode_ms": 12989.0,
+        "decode_tps": 7.61,
+        "prefill_tps": 24.44,
+        "tps_source": "api_usage",
+        "chunks": 100,
+        "api_usage": {
+          "prompt_tokens": 34,
+          "completion_tokens": 100,
+          "total_tokens": 134,
+          "active_kv_tokens": 134,
+          "max_kv_token_capacity": 16384,
+          "kv_token_occupancy_rate_percentage": 0.81787109375,
+          "load_duration": 5e-07,
+          "prefill_duration_ttft": 1.391187072,
+          "decoding_duration": 13.142984,
+          "prefill_speed_tps": 24.439560059396527,
+          "decoding_speed_tps": 7.608622212429079
+        },
+        "error": null
+      }
+    ],
+    "gen3": [
+      {
+        "ok": true,
+        "ttft_ms": 4008.2,
+        "total_ms": 17000.0,
+        "decode_ms": 12991.8,
+        "decode_tps": 7.6,
+        "prefill_tps": 46.39,
+        "tps_source": "api_usage",
+        "chunks": 100,
+        "api_usage": {
+          "prompt_tokens": 66,
+          "completion_tokens": 100,
+          "total_tokens": 166,
+          "active_kv_tokens": 166,
+          "max_kv_token_capacity": 16384,
+          "kv_token_occupancy_rate_percentage": 1.01318359375,
+          "load_duration": 5e-07,
+          "prefill_duration_ttft": 1.422590848,
+          "decoding_duration": 13.151472,
+          "prefill_speed_tps": 46.394225080801306,
+          "decoding_speed_tps": 7.603711584528333
+        },
+        "error": null
+      }
+    ]
+  }
+}

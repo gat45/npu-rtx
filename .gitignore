@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+governor_state/
+*.spv
+*.dll
+*.exe
+*.log
+*.zip
+*.bin
+.xclbin
+.insts
+.DS_Store
