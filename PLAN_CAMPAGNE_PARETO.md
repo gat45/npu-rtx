@@ -18,34 +18,49 @@
 
 ---
 
-## 1. INSPECTION PROFILER-V3 (état des lieux — fait, lecture seule)
+## 1. INSPECTION PROFILER-V3 (+ V5) — état des lieux (fait, lecture seule)
 
 ### Modules existants (socle à réutiliser, NE PAS dupliquer)
 | Module | Ce qu'il fait | Réutiliser pour |
 |---|---|---|
-| `profiler.py` | plan quant sûr + `bw_effective_decomposed()` + `simulate_l3_bounds()` + `apply_device_regime()` + rapport + **JSONL live-trace** + `--emit-tensor-type-file` | baseline, memory map, bandwidth model |
-| `quant_formats.py` | catalogue GGML (Q4_0..Q8_0, IQ) + chemins backend + "unknown ≠ impossible" | matrice format×backend |
+| `predict_from_hf_v5.py` (⭐ CŒUR V5) | `classify_tensor_family`, `pick_best_htp_format`, `analyze_residency_feasibility`, `_simulate_requant_error`, `attach_level1_quality_gate`, `run_level1_weight_error`, `render_extended_format_grid` — plan par couche/expert avec résidence SSD/RAM/HTP + quality gate | manifest Qwen, compat matrice, résidence |
+| `profiler.py` | plan quant sûr + `bw_effective_decomposed()` + `simulate_l3_bounds()` + `apply_device_regime()` + rapport + JSONL live-trace + `--emit-tensor-type-file` | baseline, memory map, bandwidth model |
+| `quant_formats.py` | catalogue GGML + chemins backend (couvre F32/F16/BF16, Q4/Q5/Q8, K-quants, IQ, TQ, MXFP4, NVFP4, Q1_0, Q2_0) + "unknown ≠ impossible" | matrice format×backend |
 | `expert_profile.py` | `normalize_access_event()` + `aggregate_expert_access(cache_capacity)` + `fuse_htp_cost()` + `assess_htp_cache_value()` | cache metrics, routing |
 | `expert_cache_metrics.py` | `assess_htp_cache_value(min_net_saved_time)` | coût cache |
 | `expert_cache_replay.py` | rejeu des accès | LRU/LFU/replay |
 | `predictor.py` | prédiction | prefetch/predictor |
 | `parse_hexagon_profile.py` / `parse_opencl_profile.py` | parsing traces HTP/OpenCL | kernel timing NPU/iGPU |
-| `profile_model.py` / `predict_from_hf_v5.py` | profilage modèle + prédiction taille HF | manifest Qwen |
+| `profile_model.py` | profilage modèle | manifest |
 | `capability_db.py` | base capacités | matrice compat |
-| `adaptive_lever.py`, `quality_gate.py` | leviers adaptatifs, gates qualité | validation |
+| `tensor_sources.py` | lecture offsets tenseurs | manifest offsets |
+| `quality_gate.py` | gates qualité | validation |
+| `adaptive_lever.py` | leviers adaptatifs | validation |
 
-### Formats de sortie existants (JSONL + rapport + tensor-type-file + device-config)
-- `--live-trace trace.jsonl` : events mesurés (format natif profiler-v3)
-- `--emit-tensor-type-file out.txt` : types par tenseur
-- `--write-default-device-config` : gabarit device (SM8850 par défaut → à remplacer par cible)
+### Le V5 (doc RAPPORT_FORMATS_QUANTIFICATION_ET_PROFILER_V5) distingue 5 objets
+1. **conteneur** (GGUF / Safetensors)
+2. **format stocké** (Q4_0, MXFP4, F8_E4M3, ...)
+3. **recette de quantification** (GPTQ/AWQ/NF4/PTQ-QAT, sym/affine, granularité scales)
+4. **layout exécuté** après repack backend
+5. **types de calcul** des activations/produits/accumulations
+→ corrige 2 erreurs : SafeTensors FP8/FP4 compté BF16 ; durée ARGSORT 215µs utilisée comme coût
+d'un dispatch FastRPC. **Une op logique ≠ kernel ≠ OPBATCH ≠ RPC.**
+
+### Exemple de sortie V5 (RAPPORT_PROFILAGE_V5_QWEN38_27B_MTP_IQ2M)
+- 866 tenseurs analysés (header GGUF seul, aucune valeur de poids lue = PROXY trafic/taille)
+- Budget poids 9 GiB · fichier source OVER_BUDGET (-2.282 GiB) · plan HTP OVER_BUDGET (-5.780)
+- Verdict résidence : BLOCKED_DENSE_STREAMING (dense = relu à chaque token, pas cold)
+- Conversions par couche : attn_qkv Q4_K → Q4_0 (TAILLE EGALE, tenseur récurrent non-HTP →
+  repli CPU à chaque token — motif calibré) ; ffn_down/gate/up Q8_0 → Q4_0 (ÉCONOMIE)
+- Candidats HTP limités : IQ4_NL, MXFP4, Q4_0, Q4_1, Q8_0 (PAS MXFP2/W2/W1/ternaire)
 
 ### Ce qu'il MANQUE (à créer dans npu-rtx/, PAS dans profiler_v3)
 1. Collecteurs AMD (npu_perf_trace, amdxdna telemetry, xdna-top)
 2. Collecteur NV GPU (CUDA timing/Nsight, occupancy)
 3. Adaptateur de format unifié vers le JSONL profiler-v3
-4. Modèle Qwen3.8 (manifest complet)
-5. PLE/GDN/QSA/KV séparés
-6. Frontière de Pareto
+4. Modèle Qwen3.8-Flash-Next (manifest complet — le V5 a profité Qwen3.8-27B, pas Flash-Next 125B)
+5. PLE/GDN/QSA/KV séparés (le V5 traite dense MoE, pas PLE/state)
+6. Frontière de Pareto + oracle D2 multi-device (V5 = HTP-centric ; ici RTX+XDNA2)
 
 ---
 
