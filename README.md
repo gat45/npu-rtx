@@ -1,7 +1,8 @@
 # npu-rtx/ — D2 System-Aware Adaptive Precision & Residency Planner
 # Dossier projet (jamais modifie profiler_v3 / sources). Tout ce qui est cree ici.
-# Objectif : frontiere de Pareto memoire<->precision<->perf pour Qwen3.8-Flash-Next
-# sur RTX 5070 + XDNA2, avec profiler-v3 comme instrument de reference (lecture seule).
+# ⚠️ CIBLE PRINCIPALE : Qwen3.6/3.5-35B-A3B (40 layers, 256 experts, top-8 + 1 shared, ~35B/3B actifs).
+# Materiel cible : Ryzen 9 HX 365 (XDNA2) + RTX 5070 8 GB. GTX 1080 = machine dev test logique.
+# Objectif : frontiere de Pareto memoire<->precision<->perf, avec profiler-v3 (lecture seule).
 
 ---
 
@@ -34,15 +35,21 @@ npu-rtx/
 
 ## RESULTATS CLES OBTENUS
 
-### Static Oracle (deja exploitable)
+### Cible 35B-A3B (Static Oracle, 40 layers / top-8 / 3.146M params par expert)
 | Resultat | Valeur | Consequence D2 |
 |---|---|---|
-| Cache 90% | 90 -> 6.6 ms/token | cache = variable de 1er ordre |
-| PCIe MoE | 1.236 -> 0.124 GiB/token | optimiser bytes/token, pas FLOPS |
-| Q4 sans cache | <= 11.1 t/s | toute mesure > = cache/prefetch requis |
-| NVFP4->INT8 | 138 -> 278 us | conversion dans le cout de placement |
-| VRAM utilisable | 6.5 GiB (8 - 1.5 WDDM) | hard constraint, pas penalite |
-| L1 XDNA2 | sous-tuiles <= 64 KiB | contrainte de plan/kernel |
+| Expert Q4 | 1.69 MiB (3.146M params) | unite de cache |
+| MoE actif/token Q4 | 0.762 GiB (0.527 routed + 0.234 shared BF16) | plancher trafic |
+| Cache 90% | 0.762 -> 0.053 GiB/token PCIe (x14) | cache = variable de 1er ordre |
+| Lower bound Q4 @20GB/s | cold ~40 ms/token · hit90 ~4 ms | elimination |
+| NVFP4->INT8 | conversion double le cout a froid (138->278us) | conversion dans placement |
+| VRAM utilisable | 6.5 GiB (8 - 1.5 WDDM) | hard constraint |
+| L1 XDNA2 | sous-tuiles <= 64 KiB (dims 2048/512 multiples de 8) | contrainte de plan |
+
+### Pareto actuel (35B, lambdas ASSUMED - calibration requise)
+```
+C1_q2_xdna : Q2 XDNA2 · latency 7.9ms · pcie 0.074 GiB/t · vram 3.0 GiB  (non-domine)
+```
 
 ### HardwareProfile (source de verite, provenance explicite)
 - Machine dev : GTX 1080 (8GB, sm_61), 32 GB RAM (6.9 dispo), CPU AMD 12 cores, driver 581.80

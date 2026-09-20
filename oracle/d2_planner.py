@@ -15,9 +15,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "static"))
 sys.path.insert(0, os.path.dirname(__file__))
 
 from feasibility import check, Plan
-from bytes_per_token import bytes_moe_active
+from bytes_per_token import bytes_moe_active, load_model
 
-EXPERT_PARAMS = 4_915_200
+# CIBLE = Qwen3.6/3.5-35B-A3B
+_MODEL = load_model()
+NUM_LAYERS = _MODEL["num_layers"]
+TOP_K = _MODEL["top_k"]
+EXPERT_PARAMS = _MODEL["params_per_expert"]
 
 
 def score(plan, lambdas=None, cache_hit=0.9, overlap=0.0, planner_overhead_us=50.0):

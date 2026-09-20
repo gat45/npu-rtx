@@ -18,9 +18,13 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "static"))
 
 from expert_mapper import L1_CORE_BYTES
-from bytes_per_token import bytes_moe_active
+from bytes_per_token import bytes_moe_active, load_model
 
-EXPERT_PARAMS = 4_915_200
+# CIBLE = Qwen3.6/3.5-35B-A3B (charge depuis config.json)
+_MODEL = load_model()
+NUM_LAYERS = _MODEL["num_layers"]
+TOP_K = _MODEL["top_k"]
+EXPERT_PARAMS = _MODEL["params_per_expert"]
 
 
 class Plan:
@@ -61,7 +65,7 @@ def check(plan, vram_available_gib=6.5, cache_hit=0.9):
     if cb < 0:
         reasons.append(f"cache_budget {cb:.2f} GiB < 0 (VRAM volee par weights/KV/workspace)")
     # lower-bound PCIe : actif/token * (1-hit) / BW
-    active = bytes_moe_active(48, 10, EXPERT_PARAMS, plan.fmt)["total_bytes"]
+    active = bytes_moe_active(NUM_LAYERS, TOP_K, EXPERT_PARAMS, plan.fmt)["total_bytes"]
     miss_b = active * (1.0 - cache_hit)
     t_miss = miss_b / (plan.pcie_bw_gbs * 1e9)
     if t_miss > 0.25:

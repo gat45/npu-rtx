@@ -1,24 +1,38 @@
 #!/usr/bin/env python3
 """bytes_per_token.py - octets actifs/token par phase (prefill/decode) + effet cache.
 
-Calcule le plancher de trafic MoE par token (routed + shared) pour chaque format,
-avec et sans cache (routing mass Haberstroh : 64 experts = 53%, 128 = 73%, 256 = 93%).
-Sortie : plancher mémoire par config -> alimente memory_planner (elimination).
+⚠️ CIBLE = Qwen3.6/3.5-35B-A3B (40 layers, 256 experts, top-8 + 1 shared).
+Les parametres sont charges depuis models/*/config.json (multi-modele).
 """
+
+import json
+import os
 
 from model_parser import canonical_dims
 from quant_size_engine import format_bpw
 
-EXPERT_PARAMS = 4_915_200
-
-# Routing mass (resultat public Haberstroh) : (experts/couche, masse cumulee)
 ROUTING_MASS = [
     (32, 0.37), (64, 0.53), (128, 0.73), (171, 0.82), (256, 0.93),
 ]
 
+MODEL_CFG = os.path.join(os.path.dirname(__file__), "..", "models",
+                         "qwen36_35b_a3b", "config.json")
+
+
+def load_model():
+    with open(MODEL_CFG, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+    h = cfg["hidden_size"]
+    i = cfg["moe_intermediate_size"]
+    ppe = h * (2 * i) + i * h  # gate/up merged + down
+    return {"num_layers": cfg["num_hidden_layers"],
+            "top_k": cfg["num_experts_per_tok"],
+            "params_per_expert": ppe,
+            "num_experts": cfg["num_experts"]}
+
 
 def bytes_moe_active(num_layers, top_k, params_per_expert, fmt, shared_fmt="BF16"):
-    """Octets MoE actifs/token sans cache : 10 routed + shared, en GiB."""
+    """Octets MoE actifs/token sans cache : top_k routed + shared, en GiB."""
     routed = num_layers * top_k * params_per_expert * format_bpw(fmt) / 8.0
     shared = num_layers * params_per_expert * format_bpw(shared_fmt) / 8.0
     return {"routed_bytes": routed, "shared_bytes": shared,
@@ -48,21 +62,22 @@ def prefill_vs_decode_note():
 
 
 if __name__ == "__main__":
-    dims = canonical_dims({})
-    nl = dims["num_hidden_layers"]
-    tk = dims["num_experts_per_tok"]
+    m = load_model()
+    nl, tk, ppe = m["num_layers"], m["top_k"], m["params_per_expert"]
+    print(f"CIBLE = Qwen3.6/3.5-35B-A3B : {nl} layers, {m['num_experts']} experts, top-{tk}, "
+          f"{ppe/1e6:.3f}M params/expert")
     print("== MoE actif/token SANS cache (routed + shared BF16) ==")
     for fmt in ["BF16", "Q8_0", "Q6_K", "Q4", "NVFP4", "INT8", "Q3", "Q2"]:
-        r = bytes_moe_active(nl, tk, EXPERT_PARAMS, fmt)
+        r = bytes_moe_active(nl, tk, ppe, fmt)
         print(f"  {fmt:5s} : routed={r['routed_bytes']/(1024**3):.3f} GiB  "
               f"+ shared={r['shared_bytes']/(1024**3):.3f}  = {r['total_gib']:.3f} GiB/token")
 
     print("\n== MoE PCIe/token AVEC cache (6 GiB Q4 ~ 48 experts/couche, hit 90%) ==")
-    r = bytes_moe_active_with_cache(nl, tk, EXPERT_PARAMS, "Q4", 48)
-    print(f"  miss PCIe = {r['miss_pcie_gib']:.3f} GiB/token (hit 90%) vs 1.236 GiB sans cache")
-    print("  -> cache evite ~90% du trafic PCIe MoE (preuve 0.31 GB vs 26 GB Haberstroh)")
+    r = bytes_moe_active_with_cache(nl, tk, ppe, "Q4", 48)
+    print(f"  miss PCIe = {r['miss_pcie_gib']:.3f} GiB/token (hit 90%) vs "
+          f"{bytes_moe_active(nl, tk, ppe, 'Q4')['routed_bytes']/(1024**3):.3f} GiB sans cache")
 
     print("\n== Routing mass (working set real) ==")
-    for e, m in ROUTING_MASS:
-        print(f"  {e:4d} experts/couche = {m*100:.0f}% du trafic")
+    for e, m_ in ROUTING_MASS:
+        print(f"  {e:4d} experts/couche = {m_*100:.0f}% du trafic")
     print("\n" + prefill_vs_decode_note())
