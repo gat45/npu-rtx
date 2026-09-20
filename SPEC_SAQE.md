@@ -322,3 +322,31 @@ hot tensor → Q8             medium → Q6       cold → Q3
 - DynaExq : https://arxiv.org/abs/2511.15015
 - TensorRT-LLM (W4A16/W8A8/FP8/NVFP4) : https://github.com/NVIDIA/TensorRT-LLM
 - KTransformers : https://github.com/kvcache-ai/KTransformers
+
+## 15. RENOMMAGE + MODÈLE DE DONNÉES (mise à jour 2026-09-20 — voir BLINDSPOTS_REPONSES.md)
+
+Concept : **D2 Adaptive Precision & Dataflow Planner** (pas "Adaptive Quantization Engine").
+
+### Structure finale
+```
+D2 PLANNER
+ ├ PRECISION (W, A, state, KV precision)
+ ├ RESIDENCY (SSD/RAM/VRAM, cache/prefetch, eviction)
+ ├ DEVICE (CPU/XDNA/RTX, kernels, backend)
+ ├ MODEL AWARENESS (MoE routing/shared | PLE lookup/shards | GDN/QSA/MTP recurrent+KV+spec)
+ ├ RESOURCE MODEL (SSD DDR PCIe VRAM NPU — BW_available(t))
+ ├ KERNEL MODEL (dequant GEMM launch — format×kernel×shape×commit)
+ └ CRITICAL PATH → DECISION
+```
+
+### ExpertVariant / ResourceState
+(voir BLINDSPOTS_REPONSES.md §modèle de données — champs complets expert_variant et
+resource_state, dont hotness, sensitivity, reuse_distance, prediction_probability, location,
+generation, et côté ressource : xdna_dma_bw, xdna_issue_us, xdna_sync_us, gpu_occupancy,
+kv_usage, temperature, clocks, confidence.)
+
+### Docs liées
+- URLS_REGISTRY.md : ~50 sources classées, 12 noyau dur
+- BLINDSPOTS_REPONSES.md : 66 angles morts → réponses + preuves/URLs
+- BLINDSPOTS_HW.md : spécificités SM120/XDNA2/Qwen Flash
+- P0_MULMAT_ID_INSERTION.md : hooks llama.cpp (L2017)
