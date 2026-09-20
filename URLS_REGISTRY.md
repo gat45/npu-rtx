@@ -279,15 +279,38 @@ host-driven → correspond exactement au NPU contrôleur/prédicteur du D2.
 |---|---|---|
 | AMD AI Analyzer 1.8 | https://ryzenai.docs.amd.com/en/main/ai_analyzer.html | partition CPU/NPU + timeline layer (⚠️ BF16 only) — validation NPU |
 | AMD XDNA Driver | https://github.com/amd/xdna-driver | npu_perf_trace.sh, telemetry, SDT events |
-| amdxdna telemetry UAPI | https://github.com/amd/xdna-driver/blob/main/src/include/uapi/drm_local/amdxdna_accel.h | QUERY_TELEMETRY/SENSORS/HW_CONTEXTS/CLOCK_METADATA |
+| **npu_perf_trace.sh** | https://github.com/amd/xdna-driver/blob/main/scripts/npu_perf_trace.sh | **Cible de dissection n°1** : XRT SDT + amdxdna_trace + perf → timestamps |
+| **amdxdna telemetry UAPI** | https://github.com/amd/xdna-driver/blob/main/src/include/uapi/drm_local/amdxdna_accel.h | QUERY_TELEMETRY/SENSORS/HW_CONTEXTS/CLOCK_METADATA |
 | AIE/XDNA doc (MERT counters) | https://www.kernel.org/doc/html/latest/accel/amdxdna/amdnpu.html | L1/DMA/DeepSleep counters |
-| xdna-top | https://github.com/Glabby000/xdna-top | monitoring NPU+iGPU, record/compare/baseline |
-| ryzenai-lab | (repo ryzenai-lab) | benchmarks NPU/CPU/power prefill/decode |
-| xdna-engine | (repo xdna-engine) | kernels AIE Rust/XRT, latence int8 |
+| telemetry vs XRT issue #1447 | https://github.com/amd/xdna-driver/issues/1447 | incompatibilités driver mainline / SHIM XRT |
+| **xdna-top** | https://github.com/Glabby000/xdna-top | **Cible n°2** : monitoring NPU+iGPU, record/compare/baseline, compteurs réels submissions/completions |
+| ryzenai-lab | https://github.com/ryzenai-lab | benchmarks NPU/CPU/power prefill/decode |
+| xdna-engine | https://github.com/ryanhnr/xdna-engine | kernels AIE Rust/XRT, latence int8 |
+| xdna-engine README | https://github.com/ryanhnr/xdna-engine/blob/main/README.md | mesures CPU vs NPU, WER, build time |
+| **IRON performance guide** | https://xilinx.github.io/mlir-aie/programming_guide/performance.html | **Cible n°4** : DMA / performance |
 
-**Preuves** : AMD fournit déja les primitives bas niveau (npu_perf_trace.sh = XRT SDT +
-amdxdna_trace + perf ; telemetry = clock/power/col_util sans instrumentation intrusive).
-Règle d'or : compteurs hardware = OBSERVATIONS du profiler, jamais une estimation fabriquée.
+## 24ter. AMD/XILINX — IRON / MLIR-AIE (pages directement exploitables)
+
+| Source | URL |
+|---|---|
+| MLIR-AIE / IRON | https://github.com/Xilinx/mlir-aie |
+| IRON Programming Guide | https://xilinx.github.io/mlir-aie/programming_guide/ |
+| IRON API | https://xilinx.github.io/mlir-aie/api/ |
+| IRON compilation stages | https://xilinx.github.io/mlir-aie/programming_guide/compilation.html |
+| getting started | https://xilinx.github.io/mlir-aie/programming_guide/getting_started.html |
+| exemples complets | https://xilinx.github.io/mlir-aie/programming_guide/examples.html |
+| mini tutorial | https://xilinx.github.io/mlir-aie/programming_guide/tutorial.html |
+| **performance / DMA** | https://xilinx.github.io/mlir-aie/programming_guide/performance.html |
+| ryzen-npu-linux (XDNA1 vs XDNA2, HX PRO 370) | https://github.com/ryzen-npu-linux (doc FR, validation XDNA2) |
+
+**Les 4 URLs à disséquer en premier pour profiler-v3** :
+1. `npu_perf_trace.sh` (XRT SDT + tracepoints driver + perf)
+2. `amdxdna telemetry UAPI` (compteurs NPU : clock/power/col_util/DMA/L1/DeepSleep)
+3. `xdna-top` (soumissions/completions réelles + iGPU, philosophie "mesurer, ne pas inventer")
+4. `IRON performance guide` (DMA / débits / transferts)
+
+→ à croiser avec les mesures profiler-v3 : events XRT + tracepoints driver + DMA + compteurs NPU +
+timestamps, puis corrélation dispatch/compute/DMA/gaps/sync.
 
 ## 25. TES PROJETS
 
