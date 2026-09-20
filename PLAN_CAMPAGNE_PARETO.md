@@ -260,6 +260,15 @@ roadmap, #3460) · xdna-top
 - → pour XDNA2 + RTX 5070 : **refaire les collecteurs dans npu-rtx/** (amd_npu.py, nv_gpu.py,
   ssd_ddr_pcie.py, quant_bench.py), jamais dans profiler_v3.
 
+### 16bis. CE QUE LE NPU AIME (voir VERIFICATION_NPU_PREFERENCES.md + OUBLIS_DECISIONS.md)
+- **INT8 = P0** (6.65-8.69 TOPS bit-exact) · **BFP16 = P0 bis** (4.64) · **BF16 = émulé ¼ → éviter**
+- **Étape P0 ajoutée : mapping expert 2560×640 → tiles XDNA2** (static/expert_mapper.py) :
+  gate/up 80×3 tiles 32×256, down 20×10 ; 640 et 2560 = multiples de 8 (pas de pénalité
+  d'alignement) ; contrainte L1 64 KB ; modes mmul 8x8x8
+- **Premier test D2 : conversion NVFP4→INT8** (chemins A/B/C/D) — NVFP4 ≠ INT8, conversion coûteuse
+- **Shared expert = dense-hot** (jamais évincé) · **imatrix par expert à tester** ·
+  **MTP rollback après cache stable** · **énergie J/token si telemetry**
+
 ### Résultats publics Qwen3.8 (voir REFERENCE_RESULTATS_PUBLICS_QWEN38.md)
 - 2.57 bpw sur 24 GB + 32 GB RAM (Haberstroh) : **0.31 GB PCIe/token vs 26 GB** (routing-aware
   streaming) — la preuve n°1 que quantification + sélectivité + paging doivent être couplés
