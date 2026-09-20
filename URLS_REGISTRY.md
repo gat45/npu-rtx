@@ -371,3 +371,28 @@ résidence/prefetch · FlashInfer/TensorRT-LLM = calcul quantifié.
 | Cache miss → basse précision | HOBBIT (§13) |
 | SSD cache ML recency+freq | FlashMoE (§15) |
 | Fragmentation pools | DynaExQ (§6) |
+
+## 29. R�SULTATS PUBLICS QWEN3.8-FLASH-NEXT (calculs de poids � voir STATIC_ORACLE_QWEN38.md)
+
+| Source | URL | Ce qu'elle donne |
+|---|---|---|
+| config.json officiel | https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/main/config.json | 2560/640/512/top-10/48/2KV/MTP/ngram |
+| config.json unsloth | https://huggingface.co/unsloth/Qwen3.8-Flash-Next/blob/main/config.json | meme config |
+| convert.log GGUF | https://huggingface.co/ggml-org/Qwen3.8-Flash-Next-GGUF/blob/main/convert.log | shapes experts + BF16->Q8_0 (1600->850 MiB) |
+| Guile GGUF serie | https://huggingface.co/Guile/Qwen3.8-Flash-Next-GGUF | Q2_K..IQ3_XS tailles fichiers |
+| Agention AP-GGUF | https://huggingface.co/agentionai/Qwen3.8-Flash-Next-AP-GGUF + README | mixed precision par groupe, KL/top-1 par bpw |
+| vumpt GGUF | https://huggingface.co/vumpt/Qwen3.8-Flash-Next-GGUF | Q4_K_M layout heterogene |
+| Haberstroh 24 GB | https://github.com/HaberstrohSystems/qwen3.8-flash-next-24gb-sglang + sglang#37792 | 2.57 bpw, 0.31 GB PCIe/token, ~54-58 t/s, routing mass |
+| lukaLLM VRAM bench | https://github.com/lukaLLM/Qwen3.8-Flash-Next-VRAM-Benchmark | PLE GPU 1.95 vs CPU 108.5 t/s (55.6x) |
+| tonyd2wild Spark | https://github.com/tonyd2wild/Qwen3.8-Flash-Next-NVFP4-DGX-Spark | NVFP4+PLE disk+FP8 KV+MTP3, par workload |
+| Starkweather NVFP4 | https://github.com/starkweatherdigital/qwen3.8-flash-next-nvfp4-recipe | experts NVFP4 67.95 GB, PLE NVFP4 28.8 GB, quantlib/quantdriver |
+| NVIDIA NVFP4 | https://huggingface.co/nvidia/Qwen3.8-Flash-Next-NVFP4 | checkpoint officiel |
+| paper Qwen | https://arxiv.org/abs/2608.30320 | architecture |
+| MiaAI-Lab | (repo MiaAI) | FP8 KV + GDN BF16, scales hors dequant, +8.5% decode / -6.1% prefill |
+
+**Resultats cles verifies (calculs dans STATIC_ORACLE_QWEN38.md)** :
+- expert/layer = 4 915 200 params = 9.375 MiB BF16 / 2.64 MiB Q4 / 3.85 Q6 / 4.98 Q8
+- 120.8B experts totaux -> 67.95 GB NVFP4 (confirme Starkweather)
+- actif/token = 2.5952256B params = 4.834 GiB BF16 / 1.675 GiB Q4 / 2.242 Q6 / 2.774 Q8
+- PLE = 320 001 536 x 160 = 95.4 GiB BF16 / 47.7 FP8 / 23.8 NVFP4 (reel 28.8 GB)
+- routing mass : 64 experts = 53%, 256 = 93% -> working set != top-k
