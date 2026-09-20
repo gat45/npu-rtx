@@ -1,0 +1,144 @@
+{
+  "timestamp": "20260920_231037",
+  "cpu": {
+    "cpu": {
+      "v": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+      "provenance": "MEASURED"
+    },
+    "cores": {
+      "v": 12,
+      "provenance": "MEASURED"
+    },
+    "ram_total_gib": {
+      "v": 31.9,
+      "provenance": "MEASURED"
+    },
+    "ram_avail_gib": {
+      "v": 6.9,
+      "provenance": "MEASURED"
+    }
+  },
+  "gpu": {
+    "nvidia": {
+      "name": {
+        "v": "NVIDIA GeForce GTX 1080",
+        "provenance": "MEASURED"
+      },
+      "vram_total_mib": {
+        "v": 8192,
+        "provenance": "MEASURED"
+      },
+      "vram_used_mib": {
+        "v": 7098,
+        "provenance": "MEASURED"
+      },
+      "driver": {
+        "v": "581.80",
+        "provenance": "MEASURED"
+      },
+      "compute_cap": {
+        "v": "6.1",
+        "provenance": "MEASURED"
+      }
+    },
+    "vram_available_mib": {
+      "v": 6656,
+      "provenance": "DERIVED",
+      "from": "vram_total - wddm_reservation"
+    }
+  },
+  "ssd": {
+    "disks": {
+      "v": [],
+      "provenance": "MEASURED"
+    }
+  },
+  "xdna2": {
+    "present": {
+      "v": true,
+      "provenance": "MEASURED"
+    },
+    "hints": {
+      "v": [
+        "C:\\Program Files\\AMD"
+      ],
+      "provenance": "MEASURED"
+    },
+    "tile_geometry": {
+      "v": null,
+      "provenance": "UNKNOWN",
+      "note": "a mesurer (xrt-smi / amdxdna telemetry, Phase B2)"
+    },
+    "l1_capacity": {
+      "v": 65536,
+      "provenance": "ASSUMED",
+      "source": "AMD docs 64KB core-local"
+    },
+    "dma_limits": {
+      "v": null,
+      "provenance": "UNKNOWN"
+    },
+    "measured_bandwidth": {
+      "v": null,
+      "provenance": "UNKNOWN",
+      "note": "BW DDR NPU 21.93 GB/s mesure FLM (reference)"
+    }
+  },
+  "pcie": {
+    "link_gen": {
+      "v": null,
+      "provenance": "UNKNOWN"
+    },
+    "lanes": {
+      "v": null,
+      "provenance": "UNKNOWN"
+    },
+    "h2d_bw": {
+      "v": null,
+      "provenance": "UNKNOWN"
+    },
+    "d2h_bw": {
+      "v": null,
+      "provenance": "UNKNOWN"
+    },
+    "note": {
+      "v": "a mesurer par microbench CUDA sur la machine cible (5070)",
+      "provenance": "ASSUMED"
+    }
+  },
+  "wddm": {
+    "wddm_reservation_gib": {
+      "v": 1.5,
+      "provenance": "ASSUMED",
+      "source": "Microsoft WDDM 2.0 (budget variable)"
+    }
+  },
+  "runtime": {
+    "os": {
+      "v": "Windows-11-10.0.26200-SP0",
+      "provenance": "MEASURED"
+    },
+    "python": {
+      "v": "3.14.2",
+      "provenance": "MEASURED"
+    },
+    "cuda_driver": {
+      "v": "581.80",
+      "provenance": "MEASURED"
+    },
+    "xrt": {
+      "v": null,
+      "provenance": "UNKNOWN"
+    },
+    "xdna_version": {
+      "v": null,
+      "provenance": "UNKNOWN"
+    }
+  },
+  "legend": [
+    "MEASURED",
+    "DERIVED",
+    "ASSUMED",
+    "UNKNOWN"
+  ]
+}

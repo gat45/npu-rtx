@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""hw_discovery.py - detection hardware reelle (Phase B, collecteurs).
+"""hw_discovery.py - source de verite materielle (Phase B, v2).
 
-Detecte automatiquement : CPU, RAM, SSD, PCIe, GPU (NV), NPU (AMD XDNA2), versions.
-Ecrit runs/<ts>/hw.json. Placeholders -> mesures reelles pour remplacer les constantes
-statiques (memory_planner, conversion_matrix, bytes_per_token).
+Produit un HardwareProfile ou chaque valeur porte sa provenance :
+  MEASURED : mesure reelle (nvidia-smi, microbench, ...)
+  DERIVED  : calculee depuis une mesure (ex. vram_available = total - wddm_reserve)
+  ASSUMED  : hypothese documentee (a remplacer par mesure)
+  UNKNOWN  : pas encore mesuree (ne jamais la traiter comme MEASURED)
 
-Utilise uniquement des outils standard (nvidia-smi, wmic/powershell, sys). Pas de DLL.
+Regle d'or : le Static Oracle ne transforme JAMAIS silencieusement ASSUMED en MEASURED.
+Ecrit runs/<ts>/hw.json (avec provenance). Utilisable par feasibility + d2_planner.
 """
 
 import json
@@ -30,15 +33,17 @@ def detect_nvidia():
                 "--format=csv,noheader"])
     if not out:
         return None
-    parts = [p.strip() for p in out.split(",")]
+    p = [x.strip() for x in out.split(",")]
     try:
         return {
-            "name": parts[0], "vram_total_mib": int(parts[1].split()[0]),
-            "vram_used_mib": int(parts[2].split()[0]), "driver": parts[3],
-            "compute_cap": parts[4],
+            "name": {"v": p[0], "provenance": "MEASURED"},
+            "vram_total_mib": {"v": int(p[1].split()[0]), "provenance": "MEASURED"},
+            "vram_used_mib": {"v": int(p[2].split()[0]), "provenance": "MEASURED"},
+            "driver": {"v": p[3], "provenance": "MEASURED"},
+            "compute_cap": {"v": p[4], "provenance": "MEASURED"},
         }
     except (IndexError, ValueError):
-        return {"raw": out}
+        return {"raw": {"v": out, "provenance": "UNKNOWN"}}
 
 
 def detect_cpu_ram():
@@ -48,15 +53,18 @@ def detect_cpu_ram():
         ram_total = psutil.virtual_memory().total
         ram_avail = psutil.virtual_memory().available
         cores = psutil.cpu_count(logical=True)
-        return {"cpu": cpu, "cores": cores, "ram_total_bytes": ram_total,
-                "ram_avail_bytes": ram_avail, "ram_total_gib": round(ram_total/1024**3, 1),
-                "ram_avail_gib": round(ram_avail/1024**3, 1)}
+        return {
+            "cpu": {"v": cpu, "provenance": "MEASURED"},
+            "cores": {"v": cores, "provenance": "MEASURED"},
+            "ram_total_gib": {"v": round(ram_total/1024**3, 1), "provenance": "MEASURED"},
+            "ram_avail_gib": {"v": round(ram_avail/1024**3, 1), "provenance": "MEASURED"},
+        }
     except ImportError:
-        return {"cpu": cpu, "note": "psutil absent -> RAM non mesuree"}
+        return {"cpu": {"v": cpu, "provenance": "MEASURED"},
+                "ram": {"v": None, "provenance": "UNKNOWN", "note": "psutil absent"}}
 
 
 def detect_ssd():
-    # Disques physiques + FS
     try:
         out = _run(["wmic", "diskdrive", "get", "Model,Size", "/format:csv"])
         disks = []
@@ -64,53 +72,77 @@ def detect_ssd():
             parts = line.split(",")
             if len(parts) >= 3 and parts[1]:
                 disks.append({"model": parts[1], "size_bytes": parts[2]})
-        return {"disks": disks[:5]}
+        return {"disks": {"v": disks[:5], "provenance": "MEASURED"}}
     except Exception:
-        return {"note": "wmic indisponible"}
+        return {"disks": {"v": None, "provenance": "UNKNOWN"}}
 
 
 def detect_npu_amd():
-    # AMD NPU : presence driver/accel + telemetry (placeholder - a completer avec
-    # npu_perf_trace.sh / amdxdna telemetry quand dispo)
-    hints = []
-    for p in [r"C:\Windows\System32\DriverStore", r"C:\Windows\System32\amdvlk64.dll",
-              r"C:\Program Files\AMD", r"C:\Program Files\RyzenAI"]:
-        if os.path.exists(p):
-            hints.append(p)
-    return {"present_hints": hints,
-            "note": "NPU AMD detecte via chemins ; telemetry XRT/amdxdna a ajouter (Phase B2)"}
-
-
-def detect_versions():
+    hints = [p for p in (r"C:\Program Files\AMD", r"C:\Program Files\RyzenAI") if os.path.exists(p)]
     return {
-        "os": platform.platform(),
-        "python": sys.version.split()[0],
-        "cuda_driver": detect_nvidia()["driver"] if detect_nvidia() else "?",
+        "present": {"v": bool(hints), "provenance": "MEASURED"},
+        "hints": {"v": hints, "provenance": "MEASURED"},
+        "tile_geometry": {"v": None, "provenance": "UNKNOWN",
+                          "note": "a mesurer (xrt-smi / amdxdna telemetry, Phase B2)"},
+        "l1_capacity": {"v": 65536, "provenance": "ASSUMED", "source": "AMD docs 64KB core-local"},
+        "dma_limits": {"v": None, "provenance": "UNKNOWN"},
+        "measured_bandwidth": {"v": None, "provenance": "UNKNOWN",
+                               "note": "BW DDR NPU 21.93 GB/s mesure FLM (reference)"},
     }
 
 
 def detect_pcie():
-    # Placeholder : a mesurer par microbench (ddr_pcie.py). Gen/link via lspci absent Windows.
-    return {"note": "PCIe gen/link/lanes a mesurer par microbench (collectors/ssd_ddr_pcie.py)"}
+    return {
+        "link_gen": {"v": None, "provenance": "UNKNOWN"},
+        "lanes": {"v": None, "provenance": "UNKNOWN"},
+        "h2d_bw": {"v": None, "provenance": "UNKNOWN"},
+        "d2h_bw": {"v": None, "provenance": "UNKNOWN"},
+        "note": {"v": "a mesurer par microbench CUDA sur la machine cible (5070)", "provenance": "ASSUMED"},
+    }
+
+
+def detect_wddm():
+    # Budget de residence variable (Microsoft WDDM) -> reserve prudente.
+    return {"wddm_reservation_gib": {"v": 1.5, "provenance": "ASSUMED",
+                                     "source": "Microsoft WDDM 2.0 (budget variable)"}}
 
 
 def main():
     ts = time.strftime("%Y%m%d_%H%M%S")
     out_dir = os.path.join(os.path.dirname(__file__), "..", "runs", ts)
     os.makedirs(out_dir, exist_ok=True)
-    hw = {
+
+    nv = detect_nvidia()
+    gpu = {"nvidia": nv} if nv else {"nvidia": {"v": None, "provenance": "UNKNOWN"}}
+    if nv and nv.get("vram_total_mib"):
+        # DERIVED : vram_available = total - wddm_reserve
+        total = nv["vram_total_mib"]["v"]
+        reserve = detect_wddm()["wddm_reservation_gib"]["v"]
+        gpu["vram_available_mib"] = {"v": total - int(reserve * 1024),
+                                     "provenance": "DERIVED",
+                                     "from": "vram_total - wddm_reservation"}
+
+    profile = {
         "timestamp": ts,
-        "nvidia": detect_nvidia(),
-        "cpu_ram": detect_cpu_ram(),
+        "cpu": detect_cpu_ram(),
+        "gpu": gpu,
         "ssd": detect_ssd(),
-        "npu_amd": detect_npu_amd(),
+        "xdna2": detect_npu_amd(),
         "pcie": detect_pcie(),
-        "versions": detect_versions(),
+        "wddm": detect_wddm(),
+        "runtime": {
+            "os": {"v": platform.platform(), "provenance": "MEASURED"},
+            "python": {"v": sys.version.split()[0], "provenance": "MEASURED"},
+            "cuda_driver": {"v": nv["driver"]["v"] if nv else None, "provenance": "MEASURED"},
+            "xrt": {"v": None, "provenance": "UNKNOWN"},
+            "xdna_version": {"v": None, "provenance": "UNKNOWN"},
+        },
+        "legend": ["MEASURED", "DERIVED", "ASSUMED", "UNKNOWN"],
     }
     path = os.path.join(out_dir, "hw.json")
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(hw, f, indent=2, default=str)
-    print(json.dumps(hw, indent=2, default=str))
+        json.dump(profile, f, indent=2, default=str)
+    print(json.dumps(profile, indent=2, default=str))
     print(f"\n-> {path}")
 
 
