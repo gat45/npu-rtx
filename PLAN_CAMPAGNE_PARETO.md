@@ -251,3 +251,28 @@ FlashMoE · FlashInfer MoE API · TensorRT-LLM quant+mode.py · CUDA gpus/blackw
 best-practices/async · GDS · WDDM residency · amd/xdna-driver (npu_perf_trace, telemetry,
 amdnpu.rst, aie2_pci.c) · AI Analyzer · mlir-aie (programming guide, iron.md, iron_configuration,
 roadmap, #3460) · xdna-top
+
+## 16. ⚠️ V5 = SNAPDRAGON + RÉSULTATS PUBLICS (mise à jour critique 2026-09-20)
+
+### profiler-v3/V5 est conçu pour Snapdragon (HTP/FastRPC), PAS XDNA2/5070
+- V5 = SOCLE LOGIQUE à réutiliser (5 objets, résidence SSD/RAM/HTP, quality gate, catalogue
+  MXFP4/NVFP4/TQ) — MAIS ses collecteurs/benchmarks sont HTP-centric.
+- → pour XDNA2 + RTX 5070 : **refaire les collecteurs dans npu-rtx/** (amd_npu.py, nv_gpu.py,
+  ssd_ddr_pcie.py, quant_bench.py), jamais dans profiler_v3.
+
+### Résultats publics Qwen3.8 (voir REFERENCE_RESULTATS_PUBLICS_QWEN38.md)
+- 2.57 bpw sur 24 GB + 32 GB RAM (Haberstroh) : **0.31 GB PCIe/token vs 26 GB** (routing-aware
+  streaming) — la preuve n°1 que quantification + sélectivité + paging doivent être couplés
+- **working set ≠ top-k** : 64 experts = 53% du trafic, 256 = 93% → cache_size = f(routing_mass),
+  commencer à 2-4× top-k
+- **PLE GPU = 55.6× plus lent que PLE CPU/RAM** (lukaLLM) → PLE → host/SSD, experts → VRAM
+- **PLE quantifiable indépendamment** : BF16/FP8/NVFP4 (Starkweather : 102→28.8 GB)
+- **FP8 KV : +8.5% decode mais -6.1% prefill** ; dequant fusionnée = -40.6% kernel (MiaAI)
+- **GDN state** : ~0.23 GB/séquence, FP32→BF16 = +6.8-8.5%
+- **MTP** : 2× code, 0% prose, négatif si draft long → par workload
+- Bugs correctness : mapping ubatch (20-30% mauvais poids), QSA dtypes, CUDA graph corruption
+
+### Plan de reproduction (l'action la plus rentable)
+R1 : reproduire 5 configs publiques (streaming sélectif / cache #28248 / PLE host / KV FP8+GDN
+BF16 / NVFP4+MTP) sur la machine cible → R2 : extraire traces expert/PLE/KV/GDN/DMA/PCIe en
+JSONL profiler-v3 → R3 : entraîner l'oracle D2 AVANT la recherche adaptative.
