@@ -273,6 +273,22 @@ mémoire ; allocations non résidentes illégales → guard rail dynamique oblig
 **Preuves** : runtime sequences dynamiques, tailles/strides/offsets DMA dynamiques, contrôle
 host-driven → correspond exactement au NPU contrôleur/prédicteur du D2.
 
+## 24bis. AMD PROFILING / TÉLÉMÉTRIE (profiler-v3 integration — voir PROFILER_V3_AMD_INTEGRATION.md)
+
+| Source | URL | Rôle |
+|---|---|---|
+| AMD AI Analyzer 1.8 | https://ryzenai.docs.amd.com/en/main/ai_analyzer.html | partition CPU/NPU + timeline layer (⚠️ BF16 only) — validation NPU |
+| AMD XDNA Driver | https://github.com/amd/xdna-driver | npu_perf_trace.sh, telemetry, SDT events |
+| amdxdna telemetry UAPI | https://github.com/amd/xdna-driver/blob/main/src/include/uapi/drm_local/amdxdna_accel.h | QUERY_TELEMETRY/SENSORS/HW_CONTEXTS/CLOCK_METADATA |
+| AIE/XDNA doc (MERT counters) | https://www.kernel.org/doc/html/latest/accel/amdxdna/amdnpu.html | L1/DMA/DeepSleep counters |
+| xdna-top | https://github.com/Glabby000/xdna-top | monitoring NPU+iGPU, record/compare/baseline |
+| ryzenai-lab | (repo ryzenai-lab) | benchmarks NPU/CPU/power prefill/decode |
+| xdna-engine | (repo xdna-engine) | kernels AIE Rust/XRT, latence int8 |
+
+**Preuves** : AMD fournit déja les primitives bas niveau (npu_perf_trace.sh = XRT SDT +
+amdxdna_trace + perf ; telemetry = clock/power/col_util sans instrumentation intrusive).
+Règle d'or : compteurs hardware = OBSERVATIONS du profiler, jamais une estimation fabriquée.
+
 ## 25. TES PROJETS
 
 | Source | URL |
