@@ -44,7 +44,7 @@
   la logique turbo3/turbo4, pas la perf Blackwell).
 - Vérifier les kernels Vulkan 1bit (dmmv_tq2/q1/matmul) si un loader Vulkan simple dispo —
   sinon report sur machine cible.
-- Mesurer le coût du bus GDDR7 (672 GB/s théorique vs ~165 GB/s effective = 51%, déjà mesuré
+- Mesurer le coût du bus GDDR7 (384 GB/s théorique vs ~165 GB/s effective = 51%, déjà mesuré
   sur la 1080 : 32.9 t/s pour Qwen9B IQ4NL).
 
 ---

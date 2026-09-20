@@ -55,12 +55,15 @@ npu-rtx/
 ### Cible 35B-A3B (Static Oracle, 40 layers / top-8 / 3.146M params par expert)
 | Resultat | Valeur | Consequence D2 |
 |---|---|---|
+| **DENSE backbone / token (FINDING)** | **4.375 GiB = 85.2% du trafic** (vs 0.761 MoE) | **le cache expert seul n'optimise que ~15%** — ajouter DENSE cache |
 | Expert Q4 | 1.69 MiB (3.146M params) | unite de cache |
-| MoE actif/token Q4 | 0.762 GiB (0.527 routed + 0.234 shared BF16) | plancher trafic |
-| Cache 90% | 0.762 -> 0.053 GiB/token PCIe (x14) | cache = variable de 1er ordre |
+| MoE actif/token Q4 | 0.762 GiB (0.527 routed + 0.234 shared BF16) | plancher trafic MoE |
+| Cache MoE 90% | 0.762 -> 0.053 GiB/token PCIe (x14) | cache = variable de 1er ordre |
 | Lower bound Q4 @20GB/s | cold ~40 ms/token · hit90 ~4 ms | elimination |
 | NVFP4->INT8 | conversion double le cout a froid (138->278us) | conversion dans placement |
 | VRAM utilisable | 6.5 GiB (8 - 1.5 WDDM) | hard constraint |
+| RTX 5070 Laptop | **8GB GDDR7, 384 GB/s** (PAS 672 desktop) | BW corrigee |
+| Ryzen AI 9 365 | **Strix Point** (PAS Dragon Range), NPU 50 TOPS marketing | spec corrigee |
 | L1 XDNA2 | sous-tuiles <= 64 KiB (dims 2048/512 multiples de 8) | contrainte de plan |
 
 ### Pareto actuel (35B, lambdas ASSUMED - calibration requise)

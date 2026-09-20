@@ -10,7 +10,7 @@
 
 | Composant | Cible réelle | Machine dev (test logique uniquement) |
 |---|---|---|
-| GPU | **RTX 5070 8 GB (Blackwell sm_120, 672 GB/s)** | GTX 1080 (Pascal sm_61) |
+| GPU | **RTX 5070 8 GB (Blackwell sm_120, 384 GB/s)** | GTX 1080 (Pascal sm_61) |
 | NPU | **XDNA2 (Ryzen 9 HX 365, INT8 P0 / BFP16 P0bis)** | aucun |
 | RAM | 32 GB DDR5 | 32 GB (7.5 dispo) |
 | Budget VRAM | **8 - 1.5 WDDM ≈ 6.5 GiB** | idem |

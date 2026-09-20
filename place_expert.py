@@ -3,7 +3,7 @@
 # Sources : reference/1bit/FLM_SECRETS.md, NPU_GEMM_FIX.md, AMDXDNA_DRIVER_UAPI.md, 1BIT_REVERSE_XDNA2.md
 
 BW_GTT = 56.0e9          # GB/s GTT dma-buf (1bit, Strix Halo) — à re-mesurer Strix Point
-BW_RTX = 672e9           # RTX 5070 GDDR7
+BW_RTX = 384e9           # RTX 5070 LAPTOP GDDR7 (8GB, 384 GB/s - PAS 672 desktop)
 BW_DDR = 89.6e9          # DDR5-5600 dual
 NPU_COLS_MAX = 8         # limite firmware XDNA2 (1bit RE)
 NPU_TOPS = 31.0          # TFLOPS pratiques (plafond 8-col, Strix Halo ; Strix Point ~XDNA2_COLS_ACTIVE=4)

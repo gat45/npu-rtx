@@ -39,7 +39,7 @@ dominant, pas augmenter les TOPS.
 |---|---|---|
 | A. DDR ↔ NPU | 21.93 GB/s effective (24.5% de 89.6) | Goulot NPU dominant |
 | B. DDR ↔ iGPU | ~30 GB/s (partage bus) | Contention |
-| C. VRAM ↔ RTX | 672 GB/s (GDDR7) | Très rapide (local) |
+| C. VRAM ↔ RTX | 384 GB/s (GDDR7) | Très rapide (local) |
 | D. DDR ↔ RTX (PCIe) | ~25 GB/s effective (PCIe 4.0 ×16) | **Critique — le pire** |
 
 **Preuve locale** : CARTE_FONCTIONNELLE — BW DDR5 effective 21.93 GB/s (causes : iGPU -3.5,

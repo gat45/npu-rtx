@@ -3,7 +3,7 @@
 
 ## CONTEXTE MATÉRIEL RÉEL (machine cible)
 - CPU/NPU : AMD Ryzen AI 9 365 (Strix Point) — NPU XDNA2, DRM amdxdna, XRT Windows/Linux
-- GPU : **RTX 5070 8 GB (Blackwell sm_120, 672 GB/s GDDR7)** — projet déjà présent :
+- GPU : **RTX 5070 8 GB (Blackwell sm_120, 384 GB/s GDDR7)** — projet déjà présent :
   `C:\Users\videl\Desktop\lama-tensorRT 1050-5070` (ggml-cuda.dll 32MB compilé CUDA Blackwell)
 - RAM 32 GB DDR5 (bus mémoire partagé CPU/NPU/iGPU)
 - Fait critique : le NPU et le GPU **ne partagent PAS le même contrôleur mémoire** sur cette
@@ -77,9 +77,9 @@ Le corpus local est Android (OpenCL + Hexagon, mmap). Pour la 5070 il faut trans
    du dossier 5070 peut le faire côté CUDA).
 
 ### Contrainte bus mémoire (le vrai sujet)
-- **dGPU 5070 (GDDR7 672 GB/s) + NPU (DDR5 ~89 GB/s)** ne partagent pas le même bus → la
-  contention "RAM" est uniquement côté NPU/CPU/iGPU. Le gain théorique de Voie B = 672 GB/s
-  (GPU) + ~89 GB/s (NPU DDR) au lieu de 672 seul, mais le NPU est ~7× plus lent en BW → son
+- **dGPU 5070 (GDDR7 384 GB/s) + NPU (DDR5 ~89 GB/s)** ne partagent pas le même bus → la
+  contention "RAM" est uniquement côté NPU/CPU/iGPU. Le gain théorique de Voie B = 384 GB/s
+  (GPU) + ~89 GB/s (NPU DDR) au lieu de 384 seul (Laptop), mais le NPU est ~7× plus lent en BW → son
   apport est limité aux experts/ops où le GPU est saturé (decode memory-bound).
 - **Réalité chiffrée** (RAPPORT §3sexies) : MoE 35B = GPU 75.65 tok/s vs NPU 11.66 → le NPU
   n'apporte un gain que si le GPU est saturé (8 GB VRAM pleine) ET que les experts overflow

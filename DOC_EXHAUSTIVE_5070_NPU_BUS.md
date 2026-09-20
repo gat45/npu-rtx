@@ -39,11 +39,11 @@ d'overflow/éco) pendant que la 5070 décode, avec RAM comme staging et SSD comm
 |---|---|---|
 | **NPU** | AMD Ryzen AI 9 365 (Strix Point) — XDNA2, PCI 0x17F0 rev 0x10 (NPU4, aie2p), 8 cols × 4 rows = 32 tiles AIE2P, **4 colonnes exposées à XRT** (4 réservées firmware), 1.8 GHz, 51.3 TOPS INT8 peak / 38 eff / 9-12 TOPS GEMM | Tier d'overflow / éco |
 | **SRAM NPU** | 2 MB L1 (64 KB × 32 tiles) + 4 MB L2 (512 KB × 8 MemTiles) = **6 MB total** | Cache poids SRAM (FLM y garde ~1.6 GB de W_eff 2.87 GB) |
-| **GPU** | NVIDIA RTX 5070 **8 GB GDDR7** (Blackwell sm_120, 672 GB/s) | Tier HOT principal (53.83 t/s mesuré Qwen3.5-9B) |
+| **GPU** | NVIDIA RTX 5070 **8 GB GDDR7** (Blackwell sm_120, 384 GB/s) | Tier HOT principal (53.83 t/s mesuré Qwen3.5-9B) |
 | **RAM** | 32 GB DDR5 (~89.6 GB/s peak, 21.93 GB/s effectif mesuré NPU) | Staging / cache chaud / KV |
 | **SSD** | NVMe (page file actif, 92.4% RAM utilisée) | Stockage froid experts |
 
-**Point décisif** : sur cette machine le dGPU (5070, GDDR7 672 GB/s) et le NPU (DDR5 ~89.6)
+**Point décisif** : sur cette machine le dGPU (5070, GDDR7 384 GB/s) et le NPU (DDR5 ~89.6)
 **ne partagent PAS le même contrôleur mémoire** — contrairement à Strix Halo (mémoire unifiée
 226 GB/s). La contention "bus" existe donc surtout **côté NPU/CPU/iGPU sur la DDR5**, pas entre
 la 5070 et le NPU. C'est un avantage structurel pour la co-exécution, MAIS le NPU reste limité
@@ -195,7 +195,7 @@ concurrent.
 ### 4.3 Échelle matérielle (RAPPORT_TIERS_HARDWARE_2026-09-13.md)
 
 - 8 GB VRAM = même cap que la GTX 1080 ; ce qui sépare les cartes = **bande passante**
-  (672 vs 320 GB/s) et tensor cores.
+  (384 vs 320 GB/s sur Laptop, 672 sur Desktop) et tensor cores.
 - Débit ∝ 1/(taille des poids lus/token) : Qwen9B IQ4NL = 5.0 GB → 32.9 t/s → BW effective
   observée 165 GB/s (51% du théorique).
 - Modèles réalistes sur 8 GB : T1 (≤4B), T2 (Bonsai 27B 1-bit 3.8 GB ✅, ternaire 7.17-7.59 ⚠️).
@@ -251,7 +251,7 @@ exposing cross-accelerator overlap."*
 
 ```
 for expert in routed_experts:
-    cost_rtx  = GPU_compute + VRAM_transfer + sync          (BW_RTX 672 GB/s)
+    cost_rtx  = GPU_compute + VRAM_transfer + sync          (BW_RTX 384 GB/s)
     cost_xdna = SSD + RAM + DMA + NPU_compute + sync         (BW_GTT/BO, 8 cols)
     cost_cpu  = DDR_read + compute                           (BW_DDR 89.6)
     cost_ssd  = SSD_io + staging

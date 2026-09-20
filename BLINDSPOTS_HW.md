@@ -136,7 +136,7 @@ Sources : reference/SOSC_v4/CARTE_FONCTIONNELLE_XDNA2_FLM.md, reference/mesures_
 
 - RTX 5070 desktop = **12 GB GDDR7** (192-bit). RTX 5070 Laptop = **8 GB** (config possible).
 - Notre machine : 8 GB (confirmé par RAPPORT_TIERS_HARDWARE et corpus).
-- 672 GB/s GDDR7 = la BW de référence du cost model.
+- 384 GB/s GDDR7 = la BW de référence du cost model.
 - **PCIe 4.0 ×16** sur le HX365 (les 16 lanes partagées avec NVMe selon topologie → à mesurer
   le lien réel RTX = x16 ou x8). La topologie exacte = angle mort (jamais mesurée sur cible).
 - **Pas de GDS Windows** → chemin SSD→pinned RAM→H2D obligatoire pour le MVP.

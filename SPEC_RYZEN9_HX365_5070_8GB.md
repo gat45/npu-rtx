@@ -1,12 +1,18 @@
 # ADAPTATION — Ryzen 9 HX 365 + RTX 5070 8 GB + 32 GB RAM + SSD
 # (machine réelle du projet, pas Strix Halo générique)
+# ⚠️ CORRIGÉ 2026-09-20 : 5070 Laptop = 384 GB/s (PAS 672) ; HX 365 = Strix Point (PAS Dragon Range) ; NPU = 50 TOPS marketing (PAS 16)
 
-## Hardware spécifié
-- CPU/NPU : AMD Ryzen 9 HX 365 (Dragon Range) → XDNA2 NPU intégré, ~16 TOPS, mémoire unifiée avec CPU/iGPU
-- GPU : NVIDIA RTX 5070 8 GB VRAM (discret, pas unifié)
+## Hardware spécifié (corrigé — sources NVIDIA + AMD officielles)
+- CPU/NPU : AMD Ryzen AI 9 365 (**Strix Point**, PAS Dragon Range) — 10C/20T (4 Zen 5 + 6 Zen 5c),
+  XDNA2 NPU, **peak marketing = 50 TOPS** (spec constructeur, PAS perf réelle), PCIe 4.0, 2 canaux mémoire
+- GPU : NVIDIA **RTX 5070 Laptop 8 GB GDDR7, 384 GB/s** (⚠️ PAS 672 = desktop 12 GB), Blackwell SM120 / CC 12.0
 - RAM : 32 GB DDR5 (staging / cache chaud)
-- Stockage : SSD NVMe (cold / experts aberraunts)
+- Stockage : SSD NVMe (cold / experts aberrants)
 - Thermal : hystérésis 60/50 °C (comme dans AGENTS.md protocole)
+
+## Règle NPU_TOPS
+- `NPU_TOPS_MARKETING = 50` (spec AMD)
+- `NPU_TOPS_EFFECTIVE = MEASURED` (jamais 50 dans le planner — le corpus mesure 6.65-8.69 TOPS INT8 kernel-only, 21.93 GB/s DDR effectif, orchestration dominante)
 
 ## Différence clé vs Strix Halo / iGPU unifié
 - Ici le NPU XDNA2 est **séparé du GPU RTX** : pas de contention BW directe NPU↔GPU sur même contrôleur mémoire, MAIS le CPU et NPU partagent la RAM 32 GB (DMA host→NPU passe par DDR5).
