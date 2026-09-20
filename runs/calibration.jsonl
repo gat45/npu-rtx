@@ -1,0 +1,3 @@
+{"ts": 1789939917.1598442, "plan_id": "plan-C1", "key": "h2d:0/17/gate", "predicted": 80, "actual": 95, "error": 15}
+{"ts": 1789939917.1610076, "plan_id": "plan-C1", "key": "h2d:0/17/gate", "predicted": 82, "actual": 97, "error": 15}
+{"ts": 1789939917.1615262, "plan_id": "plan-C1", "key": "h2d:0/17/gate", "predicted": 79, "actual": 88, "error": 9}

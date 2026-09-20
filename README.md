@@ -4,33 +4,50 @@
 # Materiel cible : Ryzen 9 HX 365 (XDNA2) + RTX 5070 8 GB. GTX 1080 = machine dev test logique.
 # Objectif : frontiere de Pareto memoire<->precision<->perf, avec profiler-v3 (lecture seule).
 
----
+## STATUS (honnete — ne pas confondre "le planner calcule" et "le systeme execute")
 
-## ARBORESCENCE
+| Composant | Etat |
+|---|---|
+| STATIC ORACLE | ✅ OPERATIONAL (model_parser, quant, expert_mapper, bytes/token, memory, lower bounds) |
+| HARDWARE MODEL | 🟡 PARTIAL (dev = GTX 1080 ; cible 5070+XDNA2 a mesurer) |
+| TARGET MEASUREMENTS | 🔴 NOT COMPLETE (PCIe/H2D/NPU tile/XRT sur machine cible) |
+| RUNTIME | 🟡 SQUELETTE (residency_manager + kernel_registry + full_matrix P0-P9) |
+| DYNAMIC CALIBRATION | 🟡 SQUELETTE (online_calibration + prediction_error) |
+| D2 DECISION | 🔴 EXPERIMENTAL (lambdas ASSUMED, confidence 0.5) |
+| END-TO-END | 🔴 NOT VALIDATED (P0-P9 sur machine cible requis) |
+
+## ARBORESCENCE (nouvelle — runtime/kernels/feedback ajoutes)
 
 ```
 npu-rtx/
-├── static/                  # Static Oracle (Phase A - calculs avant execution)
-│   ├── model_parser.py        # config.json -> dims + shapes experts          ✅
-│   ├── quant_size_engine.py   # taille par format (bpw effectif avec overhead) ✅
-│   ├── expert_mapper.py       # mapping expert 2560x640 -> tuiles mmul XDNA2   ✅
-│   ├── conversion_matrix.py   # cout chemins A/B/C/D NVFP4->INT8               ✅
-│   ├── bytes_per_token.py     # octets actifs/token + effet cache             ✅
-│   └── memory_planner.py      # budgets VRAM + elimination lower-bound        ✅
-├── collectors/               # Phase B - mesures reelles
-│   ├── hw_discovery.py         # HardwareProfile avec provenance MEASURED/    ✅
-│   │                           #   DERIVED/ASSUMED/UNKNOWN                    ✅
-│   ├── ssd_ddr_pcie.py         # microbench 1K->64M (DDR 49.6, SSD 12.3 GB/s) ✅
-│   └── quant_bench.py          # conversion NVFP4->INT8 (Python = minimum)    ✅
+├── static/                  # Static Oracle (Phase A)
+│   ├── model_parser.py        # config.json -> dims + shapes experts
+│   ├── quant_size_engine.py   # taille par format
+│   ├── expert_mapper.py       # mapping expert -> tuiles mmul XDNA2
+│   ├── conversion_matrix.py   # cout chemins A/B/C/D NVFP4->INT8
+│   ├── bytes_per_token.py     # octets actifs/token + cache (parametre par config)
+│   ├── memory_planner.py      # budgets VRAM + elimination
+│   └── static_oracle_35b.py   # Static Oracle 35B-A3B (cible)
+├── collectors/               # Phase B - mesures
+│   ├── hw_discovery.py         # HardwareProfile + provenance (cible=HX365+5070)
+│   ├── ssd_ddr_pcie.py         # microbench
+│   └── quant_bench.py          # conversion
+├── kernels/
+│   └── kernel_registry.py      # KernelCapabilityDB (sm120 + xdna2)  [TROU 12]
+├── runtime/
+│   └── residency_manager.py    # ExpertResidencyManager (promote/evict/pin) [TROU 24]
+├── feedback/
+│   └── online_calibration.py   # boucle prediction->actual->confidence [TROU 19]
+├── experiments/
+│   └── full_matrix.py          # 10 tests P0-P9 (meme format de trace)
 ├── correlation/
-│   └── unify_events.py         # adaptateur -> JSONL profiler-v3              ✅
-├── oracle/                    # Decision
-│   ├── feasibility.py          # filtre : rejette plans impossibles (VRAM/L1/ ✅
-│   │                           #   PCIe/workspace) avant Pareto
-│   └── d2_planner.py           # Static+Dynamic+feasibility -> front Pareto   ✅
-├── runs/<ts>/                 # sorties (hw.json, ...)
-├── *.md                       # 26 docs (plan, matrices, blindspots, sources)
-└── reference/                 # corpus local lecture seule
+│   └── unify_events.py         # adaptateur -> JSONL profiler-v3
+├── oracle/
+│   ├── feasibility.py          # filtre contraintes dures (cache_budget = VRAM-w-KV-ws)
+│   └── d2_planner.py           # T(plan) avec T_overlap + Pareto
+├── models/qwen36_35b_a3b/config.json
+├── runs/<ts>/
+└── *.md                       # docs (rapports, matrices, blindspots)
 ```
 
 ## RESULTATS CLES OBTENUS

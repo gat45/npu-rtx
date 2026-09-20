@@ -1,0 +1,87 @@
+{
+  "sm120_rtx5070": {
+    "nvfp4_gemm": {
+      "backend": "cutlass",
+      "supported": true,
+      "shapes": [],
+      "measured": false,
+      "note": "CUTLASS 79d_blackwell_geforce_nvfp4_grouped_gemm (SM120)"
+    },
+    "nvfp4_gemm_flashinfer": {
+      "backend": "flashinfer",
+      "supported": true,
+      "shapes": [],
+      "measured": false,
+      "note": "b12x cute_dsl SM120/SM121"
+    },
+    "fp8_rowwise": {
+      "backend": null,
+      "supported": false,
+      "note": "TensorRT-LLM: FP8 rowwise NON supporte sur sm120"
+    },
+    "fp8_pertensor": {
+      "backend": "flashinfer",
+      "supported": true,
+      "shapes": [],
+      "measured": false
+    },
+    "fp8_blockscale": {
+      "backend": null,
+      "supported": false,
+      "note": "TensorRT-LLM: FP8 block-scale NON supporte sm120"
+    },
+    "q4k_gemm": {
+      "backend": "llamacpp_mmq",
+      "supported": true,
+      "shapes": [],
+      "measured": false
+    },
+    "q6k_gemm": {
+      "backend": "llamacpp_mmq",
+      "supported": true,
+      "shapes": [],
+      "measured": false
+    },
+    "w4a16": {
+      "backend": null,
+      "supported": false,
+      "note": "TRT-LLM sm120: NON supporte"
+    }
+  },
+  "xdna2_hx365": {
+    "int8_gemm": {
+      "backend": "iron/mmal",
+      "supported": true,
+      "shapes": [
+        "8x8x8"
+      ],
+      "measured": false,
+      "note": "INT8 chemin natif P0 (6.65-8.69 TOPS mesure DESCENT)"
+    },
+    "int4_gemm": {
+      "backend": null,
+      "supported": false,
+      "note": "INT4 = stockage seul, compute INT8/BF16"
+    },
+    "bfp16_gemm": {
+      "backend": "iron",
+      "supported": true,
+      "shapes": [
+        "8x8x8"
+      ],
+      "measured": false,
+      "note": "BFP16 natif P0bis (4.64 TFLOPS)"
+    },
+    "bf16_gemm": {
+      "backend": "iron",
+      "supported": false,
+      "note": "BF16 = EMULE via BFP16 (1/4 debit) - eviter"
+    },
+    "gemv_int8": {
+      "backend": "iron",
+      "supported": true,
+      "shapes": [],
+      "measured": false
+    }
+  }
+}
