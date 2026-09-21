@@ -8,8 +8,12 @@ Reprend les principes validés de la littérature/communauté (voir AXES_5070.md
   4. pipeline prefetch N+1 masqué sur t_compute (leçon #25859/wackMall)
   5. miss → décision transfert vs compute CPU (RFC #24528)
   6. ledger NET_HARDWARE_GAIN + marginal dG/dCache + Pareto
+  7. tier WARM = pinned RAM en cache L2 explicite ; éviction VRAM→RAM GRATUITE
+     (poids read-only : la copie RAM reste intacte, zéro DMA d'éviction) ;
+     le tier SSD n'est entré QUE si le pool experts dépasse la RAM (leçon
+     SSD-LLaMA/mmap : SSD = capacité, pas chemin de decode)
 Usage : py moe_axis_profiler.py [--ctx 8192] [--kv turbo4] [--expert-fmt nvfp4]
-          [--skew 0.6] [--compute-buffer 0.5] [--rail 0.3]
+          [--skew 0.6] [--compute-buffer 0.5] [--rail 0.3] [--ram-gb 32] [--ssd-gbs 5]
 """
 import argparse
 import json
@@ -69,6 +73,27 @@ def tier_costs(m, args, hit):
     return miss_bytes, t_h2d, t_h2d_pg, t_cpu_miss, t_dma_visible
 
 
+def warm_tier(m, args, hit_vram):
+    """WARM = pinned RAM comme cache L2 explicite.
+    - pool experts total (toutes couches) vs RAM dispo -> fraction couverte
+    - miss VRAM -> WARM (fetch pinned H2D) si l'expert est en RAM, sinon COLD (SSD+H2D)
+    - éviction VRAM→RAM : metadata seule (pas de write-back, poids read-only)
+    Retour: (pool_gib, f_ram, h_warm, h_cold, t_warm_ms, t_cold_ms, evict_per_tok)"""
+    per_exp_b = MODEL["expert_mb"][args.expert_fmt] * 1e6
+    pool_gib = MODEL["n_layers"] * MODEL["experts"] * per_exp_b / GI
+    ram_avail = args.ram_gb - args.rail - MODEL["permanent_gib"] - kv_gib(args)
+    f_ram = 1.0 if pool_gib <= ram_avail else max(ram_avail / pool_gib, 0.0)
+    miss = 1.0 - hit_vram
+    h_warm = miss * f_ram
+    h_cold = miss * (1.0 - f_ram)
+    bytes_warm = h_warm * MODEL["top_k"] * per_exp_b
+    bytes_cold = h_cold * MODEL["top_k"] * per_exp_b
+    t_warm = bytes_warm / (m["h2d_pinned"] * 1e9) * 1000
+    t_cold = bytes_cold * (1.0 / (args.ssd_gbs * 1e9) + 1.0 / (m["h2d_pinned"] * 1e9)) * 1000
+    evict = h_warm + h_cold  # chaque fetch VRAM comble un slot -> 1 éviction metadata
+    return pool_gib, f_ram, h_warm, h_cold, t_warm, t_cold, evict
+
+
 def decode_tps(m, args):
     """t/token (ms) et t/s : BW-bound backbone + temps d'attente transferts."""
     _, per_exp, res_max, _ = budget(m, args)
@@ -110,6 +135,8 @@ def main():
     ap.add_argument("--skew", type=float, default=0.85, help="1.0=uniforme, <1=localité")
     ap.add_argument("--compute-buffer", dest="compute_buffer", type=float, default=0.5)
     ap.add_argument("--rail", type=float, default=0.3)
+    ap.add_argument("--ram-gb", dest="ram_gb", type=float, default=32.0)
+    ap.add_argument("--ssd-gbs", dest="ssd_gbs", type=float, default=5.0)
     ap.add_argument("--prefetch", action="store_true")
     args = ap.parse_args()
     try:
@@ -121,9 +148,13 @@ def main():
     cache_b, per_exp, res_max, kv = budget(m, args)
     res = min(int(res_max), MODEL["experts"])
     hit = hit_skewed(res, args.skew)
-    miss_b, t_h2d, t_h2d_pg, t_cpu_miss, t_dma_vis = tier_costs(m, args, hit)
+    miss_b, t_h2d, t_h2d_pg, t_cpu_miss, _ = tier_costs(m, args, hit)
     act = MODEL["top_k"] * per_exp * hit + MODEL["dense_backbone_bytes"]
     tps = m["bw_eff_gbs"] * 1e9 / act
+    pool_gib, f_ram, h_warm, h_cold, t_warm, t_cold, evict = warm_tier(m, args, hit)
+    t_miss = t_warm + t_cold
+    t_compute = 1000.0 / tps
+    t_dma_vis = max(t_miss - t_compute, 0.0) if args.prefetch else t_miss
     t_tok = 1000.0 / tps + t_dma_vis
 
     print(f"=== MoE AXIS PROFILER — {m['label']} — {MODEL['label']} ===")
@@ -133,9 +164,12 @@ def main():
           f" − compute_buffer {args.compute_buffer} − rail {args.rail} = **{cache_b/GI:.2f} GiB**"
           f" -> résidence {res}/256 (plafond poids-seuls gpu_tier_profiler: comparable mais TOUT soustrait ici)")
     print(f"[AXE 09/10] hit skew {hit:.2f} | miss {1-hit:.2f}")
+    print(f"[TIER L2 WARM] pool experts {pool_gib:.1f} GiB | RAM dispo {args.ram_gb-args.rail-MODEL['permanent_gib']-kv_gib(args):.1f} GiB"
+          f" -> WARM couvre {f_ram*100:.0f}% des miss | évictions {evict:.2f}/tok (metadata seule, 0 DMA)")
+    print(f"  HOT (VRAM) {hit*100:.0f}% | WARM (pinned) {h_warm*100:.0f}% -> {t_warm:.2f} ms | COLD (SSD {args.ssd_gbs} GB/s) {h_cold*100:.0f}% -> {t_cold:.2f} ms | total miss {t_miss:.2f} ms/tok")
     print(f"[AXE 03/04] miss {miss_b/1e6:.1f} MB/tok : H2D pinned {t_h2d:.2f} ms | pageable {t_h2d_pg:.2f} ms"
-          f" (ratio pinned/pageable ×{t_h2d_pg/max(t_h2d,1e-9):.1f}) | miss→CPU {t_cpu_miss:.2f} ms"
-          f" -> décision: {'transfert GPU' if t_h2d < t_cpu_miss else 'compute CPU'}")
+          f" (ratio ×{t_h2d_pg/max(t_h2d,1e-9):.1f}) | miss→CPU {t_cpu_miss:.2f} ms"
+          f" -> décision WARM: {'transfert GPU' if t_warm < t_cpu_miss else 'compute CPU'}")
     if args.prefetch:
         print(f"[AXE 11/14] prefetch N+1: DMA visible {t_dma_vis:.2f} ms (masqué partiellement, t_compute {1000/tps:.2f} ms)")
     print(f"[AXE 05] decode {tps:.1f} t/s (BW-bound) | t/token {t_tok:.2f} ms"
