@@ -129,12 +129,32 @@ llama-bench -m <model>.gguf -p 512 -n 128 -fa on   # recalibre BW_eff (hyp. 165 
 Hypothèses à confirmer en premier : 1.25 MB/expert NVFP4 réel (requant),
 BW_eff 165 GB/s, coût overflow NPU ×16.
 
-### 9.4 Mapping repos (rôles)
+### 9.4 Mapping repos (rôles) — vérifié 2026-09-21
 
-| Repo | Rôle | Ce qui vient d'ici |
+| Repo | Rôle | Preuves / points d'entrée |
 |---|---|---|
-| **GaTmanes/xdna2** | **Runtime d'inférence complet (GGUF → génération) — le plus avancé / principal** | backend d'exécution Voie A/B ; c'est lui qui porte les kernels et le cycle génération |
-| **Tagman45/adaptive-xdna-runtime** | Générateur + planner adaptatif de kernels + oracles — actif, couche supérieure | `xdna2/planner_core.py`, `adapter_bridge.py`, `profiler_tiers/` (plans/sweeps), oracles P0 |
+| **GaTmanes/xdna2-** (attention : tiret final) | **Runtime d'inférence complet (GGUF → génération) — le plus avancé / principal** | cloné `E:/oneplus/xdna2-runtime` ; fork llama.cpp avec **`bin/ggml-xdna.dll`** (backend XDNA2 natif) + kernels `.xclbin/.insts` pré-buildés (`kernels/decode_layer_f3best_*`, `decode_front_attn_*`) ; Qwen3.5-9B 32 couches validé : CPU-Q4 == NPU-Q4 (8/8 tokens + golden 64/64), batched GEMV ×2.46, 1.86 → 0.667 s/token ; scripts `run_9B_npu_conservateur.sh` |
+| **Tagman45/adaptive-xdna-runtime** | **Compilateur adaptatif de kernels XDNA2 : IRON, DMA/TAP, oracle, cache SHA** — couche supérieure, active | cloné `E:/oneplus/adaptive-xdna-runtime` (`54272f2`, MLIR-AIE 1.4) ; **78/78 tests OK** en local ; entrées : `adaptive_xdna_runtime/planner.py`, `compiler.py`, `registry.py` (artefacts validés SHA + ExecutionManifest), `observation.py` (oracles), `mcp_server.py` |
 
-Le planner (couche supérieure) émet placements/variants ; le runtime xdna2 les
-exécute ; les oracles re-mesurent et recalibrent (ASSUMED → MEASURED, §0).
+Flux entre les deux couches :
+
+```
+requête (op, K, N, quant)
+  → adaptive-xdna-runtime : planner variantes → génération IRON → oracle NPU
+    → registry (jamais d'artefact non validé ; SHA xclbin + plan DMA liés)
+  → xdna2- (runtime principal) : exécution XRT résidente — GGUF → génération
+    (ggml-xdna.dll + xclbin ; c'est lui qui porte la Voie A côté NPU :
+    l'overflow experts 0.44 du plan §9.1 s'exécute via ce runtime)
+  → observation : re-mesure → recalibrage planner (ASSUMED → MEASURED, §0)
+```
+
+Note d'usage : le runtime `xdna2-` embarque ses kernels pré-buildés pour
+Qwen3.5-9B (géométries figées dans les noms de fichiers) ; pour les NOUVELLES
+géométries/experts (35B-A3B), c'est `adaptive-xdna-runtime` qui génère, valide
+(oracle) et registre les kernels que `xdna2-` consomme ensuite.
+
+Côté npu-rtx (ce repo) : `xdna2/planner_core.py` + `adapter_bridge.py` et
+`profiler_tiers/` produisent placements/sweeps/calibrage consommés par la couche
+planner ; l'état du smoked test matériel (GEMV INT8 64×64 validé NPU, aucun
+kernel promu auto) est documenté dans
+`INT8_GEMV_NPU_BASELINE_2026-09-19.md` du repo cloné.
