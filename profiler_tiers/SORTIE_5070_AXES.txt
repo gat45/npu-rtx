@@ -1,0 +1,46 @@
+=== MoE AXIS PROFILER — RTX 5070 Laptop 8 Go (cible) — Qwen3.5/3.6-35B-A3B ===
+ctx=8192 KV=turbo4 (0.32 GiB) experts=nvfp4 (1.25 MB) skew=0.85 prefetch=OFF
+
+[BUDGET #24528] free 7.36 Go − permanent 1.5 − KV 0.32 − compute_buffer 0.5 − rail 0.3 = **4.74 GiB** -> résidence 101/256 (plafond poids-seuls gpu_tier_profiler: comparable mais TOUT soustrait ici)
+[AXE 09/10] hit skew 0.45 | miss 0.55
+[AXE 03/04] miss 5.5 MB/tok : H2D pinned 0.27 ms | pageable 0.84 ms (ratio pinned/pageable ×3.1) | miss→CPU 0.49 ms -> décision: transfert GPU
+[AXE 05] decode 109.7 t/s (BW-bound) | t/token 9.39 ms -> effectif 106.5 t/s
+[AXE 18] marginal: +1 GiB cache = +21 experts -> dHit/dGiB = +0.083
+[Voie A] overflow 0.55 sur NPU (x16/hit, sur-package) — agrégat sim. 61.5 t/s
+
+[LEDGER NET_HARDWARE_GAIN]
+  baseline (cache plein budget)    hit 0.45 | 109.7 t/s
+  levier prefetch N+1              hit 0.45 | 111.5 t/s
+
+[PROVENANCE] permanent/compute_buffer/rail/skew/h2d = ASSUMED (AXES_5070 §6 pour MEASURED)
+=== MoE AXIS PROFILER — RTX 5070 Laptop 8 Go (cible) — Qwen3.5/3.6-35B-A3B ===
+ctx=8192 KV=turbo4 (0.32 GiB) experts=q4 (2.45 MB) skew=1.0 prefetch=OFF
+
+[BUDGET #24528] free 7.36 Go − permanent 1.5 − KV 0.32 − compute_buffer 0.5 − rail 0.3 = **4.74 GiB** -> résidence 51/256 (plafond poids-seuls gpu_tier_profiler: comparable mais TOUT soustrait ici)
+[AXE 09/10] hit skew 0.20 | miss 0.80
+[AXE 03/04] miss 15.7 MB/tok : H2D pinned 0.78 ms | pageable 2.41 ms (ratio pinned/pageable ×3.1) | miss→CPU 0.72 ms -> décision: compute CPU
+[AXE 05] decode 109.7 t/s (BW-bound) | t/token 9.90 ms -> effectif 101.0 t/s
+[AXE 18] marginal: +1 GiB cache = +11 experts -> dHit/dGiB = +0.043
+[Voie A] overflow 0.80 sur NPU (x16/hit, sur-package) — agrégat sim. 61.5 t/s
+
+[LEDGER NET_HARDWARE_GAIN]
+  baseline (cache plein budget)    hit 0.20 | 109.7 t/s
+  levier NVFP4 (vs Q4)             hit 0.39 | 109.7 t/s
+  levier prefetch N+1              hit 0.20 | 117.8 t/s
+
+[PROVENANCE] permanent/compute_buffer/rail/skew/h2d = ASSUMED (AXES_5070 §6 pour MEASURED)
+=== MoE AXIS PROFILER — RTX 5070 Laptop 8 Go (cible) — Qwen3.5/3.6-35B-A3B ===
+ctx=65536 KV=turbo4 (2.58 GiB) experts=nvfp4 (1.25 MB) skew=0.85 prefetch=ON
+
+[BUDGET #24528] free 7.36 Go − permanent 1.5 − KV 2.58 − compute_buffer 0.5 − rail 0.3 = **2.48 GiB** -> résidence 53/256 (plafond poids-seuls gpu_tier_profiler: comparable mais TOUT soustrait ici)
+[AXE 09/10] hit skew 0.26 | miss 0.74
+[AXE 03/04] miss 7.4 MB/tok : H2D pinned 0.37 ms | pageable 1.14 ms (ratio pinned/pageable ×3.1) | miss→CPU 0.66 ms -> décision: transfert GPU
+[AXE 11/14] prefetch N+1: DMA visible 0.00 ms (masqué partiellement, t_compute 9.11 ms)
+[AXE 05] decode 109.8 t/s (BW-bound) | t/token 9.11 ms -> effectif 109.8 t/s
+[AXE 18] marginal: +1 GiB cache = +21 experts -> dHit/dGiB = +0.086
+[Voie A] overflow 0.74 sur NPU (x16/hit, sur-package) — agrégat sim. 61.5 t/s
+
+[LEDGER NET_HARDWARE_GAIN]
+  baseline (cache plein budget)    hit 0.26 | 109.8 t/s
+
+[PROVENANCE] permanent/compute_buffer/rail/skew/h2d = ASSUMED (AXES_5070 §6 pour MEASURED)
