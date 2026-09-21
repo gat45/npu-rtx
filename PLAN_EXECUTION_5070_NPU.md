@@ -104,3 +104,29 @@
 
 Prochaine action immédiate : Phase 1.1 (planner_core.py + adapter_bridge.py) + 1.3 (benchmark
 simulé → bench.json).
+
+---
+
+## ✅ STATUT 2026-09-21 — PHASE 1 TERMINÉE (device OP15 offline, travail machine dev)
+
+| Livrable | Fichier | Test |
+|---|---|---|
+| 1.1 planner_core | `xdna2/planner_core.py` (PlanResult, plan_experts, provenance) | test_phase1 OK |
+| 1.1 adapter_bridge | `xdna2/adapter_bridge.py` (NpuRtxAdapter, contrat ProjectAdapter dynamique, fallback si governor absent) | test_phase1 OK |
+| 1.2 cost model v2 | `npu-rtx/cost_contention_patch.py` (BUS_PATHS gtt/host_coherent, BW_eff 21.93, η 0.731, W_eff 2.87→4.93, npu_decode_tps, xdna_expert_cost) | ancres vérifiées par tests |
+| 1.3 benchmark simulé | `xdna2/benchmark_sim.py` → `xdna2/bench/bench.json` + `comparison.json` | 9 configs A/B/C × α∈{1.0,1.16,1.3} |
+| 1.4 README cible | `xdna2/README_DEPLOIEMENT.md` | — |
+| Tests | `xdna2/test_phase1.py` : 14/14 OK · noyau governor 99/99 OK (INLINE MoE réparé dans test_governor.py) | ✅ |
+
+**Résultats simulés clés** (calibrés : GPU 53.83 t/s MEASURED, NPU 7.64 t/s CALIBRATED,
+CPU 44.8 GB/s ASSUMED) :
+- Résidence VRAM bornée **par couche** (≈41 experts/couche sur 256) — pas globale.
+- hit@41 : α=1.0 → 0.844 · α=1.16 → 0.900 · α=1.30 → 0.936 (loi Pareto).
+- **B_RTX_XDNA2 est systématiquement PIRE que A_RTX_only** (19.5 vs 41.4 t/s @α=1.0) :
+  le coût d'un expert overflow NPU (DMA GTT 56 GB/s + DDR_eff + compute INT8) est ~16×
+  celui d'un hit GPU — le NPU ne vaut que comme tier d'overflow QUAND la VRAM déborde
+  réellement, ou en double-flux indépendant (Voie A : 61.5 t/s agrégat).
+- UNKNOWN restants : BW host_coherent (P0.6), scaling cols, CPU réellement mesuré.
+
+**Prochaine étape** : Phase 2 (kernels turbo sur GTX 1080) ou Phase 3 sur machine cible
+quand disponible. Device OP15 toujours offline → aucune tâche device.
