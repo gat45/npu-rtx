@@ -75,6 +75,7 @@ MACHINES = {
 NPU_OVERFLOW_COST = 16.0
 VOIE_A_AGREGAT_TPS = 61.5
 ANCHOR_1080_QWEN9B_IQ4NL_TPS = 32.9   # mesure 1080 déjà consolidée
+DENSE_BACKBONE_BYTES = 1.5e9          # stand-in calibré W_eff (85.2% trafic, vLLM #51197) — à recalibrer par llama-bench
 
 # Modèles de référence (archi MoE)
 MODELS = {
@@ -223,7 +224,7 @@ def mode_plan(args):
 
     # Decode BW-bound : le terme dominant est le DENSE BACKBONE (85.2% du trafic,
     # vLLM #51197) + attention + lecture KV ; les experts résidents pèsent top_k×hit.
-    dense_backbone_bytes = 1.5e9   # stand-in calibré W_eff — à recalibrer par llama-bench
+    dense_backbone_bytes = DENSE_BACKBONE_BYTES
     if mdl["experts"] > 0:
         act_bytes = mdl["top_k"] * per_exp * (gpu_hit_vs_overflow(mdl, m, n_res_eff) or 0) + dense_backbone_bytes
     else:
@@ -267,6 +268,46 @@ def mode_compare(_args):
         print(f"{a:<28}{b:<26}{c:<22}")
 
 
+def mode_sweep(args):
+    """SWEEP résidence (ex. 32→256 experts/couche) : hit GPU, overflow MB/tok,
+    latence PCIe ms/tok, decode t/s — un seul tableau, avec frontière VRAM."""
+    m = MACHINES[args.machine]
+    mdl = MODELS[args.model]
+    if mdl["experts"] == 0:
+        print("modèle dense (0 expert) — sweep inapplicable")
+        return
+    fmt = args.expert_fmt
+    per_exp = m["expert_bytes_nvfp4"] if fmt == "nvfp4" else m["expert_bytes_q4"]
+    kvb = kv_cache_bytes(mdl, args.ctx, args.kv)
+    budget = m["vram_gb"] * 0.92 * 1e9
+    kv_after = budget - kvb
+    max_res = int(kv_after / per_exp / m["n_layers"])
+    epl = mdl["experts"]
+    to = min(args.to, epl)
+    fmt_note = " (FP4 natif Blackwell)" if fmt == "nvfp4" and m["sm"] == "sm_120" else (" (émul — Pascal sans FP4 natif)" if fmt == "nvfp4" else "")
+    hdr = f"{'rés/couche':>10} {'hit GPU':>8} {'ovf MB/tok':>11} {'PCIe ms/tok':>12} {'decode t/s':>11}  note"
+    print(f"=== SWEEP résidence — {m['label']} — {mdl['label']} — experts {fmt}{fmt_note} — KV {args.kv} @ctx={args.ctx} ===")
+    print(f"PCIe gen{m['pcie_gen']:.0f} x{m['pcie_lanes']} = {m['pcie_gbs_theo']} GB/s | BW eff {m['bw_eff_gbs']} GB/s | résident max VRAM: {max_res}/{epl}/couche")
+    print(hdr)
+    print("-" * len(hdr))
+    n = args.frm
+    while n <= to:
+        hit = min(n / epl, 1.0)
+        ovf = (1 - hit) * mdl["top_k"] * per_exp
+        t_pcie = pcie_stream_time_s(m, ovf) * 1000
+        act = mdl["top_k"] * per_exp * hit + DENSE_BACKBONE_BYTES
+        tps = decode_tps_bw_bound(m, act)
+        note = ""
+        if n > max_res:
+            note = "DEPASSE VRAM"
+        elif n == max_res:
+            note = "<- max VRAM"
+        elif n == to and hit >= 1.0:
+            note = "full résident"
+        print(f"{n:>10} {hit:>8.2f} {ovf/1e6:>11.1f} {t_pcie:>12.2f} {tps:>11.1f}  {note}")
+        n += args.step
+
+
 def main():
     ap = argparse.ArgumentParser(description="GPU tier profiler (copies, sources intactes)")
     sub = ap.add_subparsers(dest="mode", required=True)
@@ -279,6 +320,15 @@ def main():
     p.add_argument("--expert-fmt", default="q4", choices=["q4", "nvfp4"])
     p.add_argument("--ctx", type=int, default=8192)
     p.set_defaults(fn=mode_plan)
+    p = sub.add_parser("sweep"); p.add_argument("--machine", choices=list(MACHINES), required=True)
+    p.add_argument("--model", choices=list(MODELS), default="35b")
+    p.add_argument("--kv", default="turbo4", choices=["f16", "q8_0", "turbo3", "turbo4"])
+    p.add_argument("--expert-fmt", default="nvfp4", choices=["q4", "nvfp4"])
+    p.add_argument("--ctx", type=int, default=8192)
+    p.add_argument("--from-res", dest="frm", type=int, default=32)
+    p.add_argument("--to-res", dest="to", type=int, default=256)
+    p.add_argument("--step", type=int, default=16)
+    p.set_defaults(fn=mode_sweep)
     p = sub.add_parser("bench"); p.add_argument("--machine", choices=list(MACHINES), required=True)
     p.add_argument("--kind", default="moe", choices=["moe", "gpu"]); p.add_argument("--q", default="4bit", choices=["4bit", "8bit", "16bit"])
     p.add_argument("--ctx", type=int, default=8192); p.set_defaults(fn=mode_bench)

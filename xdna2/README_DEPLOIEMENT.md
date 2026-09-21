@@ -87,3 +87,54 @@ Validation correction AVANT perf : diff token-par-token, seed fixe, temp=0.
 | P0.4 | bytes/token dense backbone | static/bytes_per_token (+dense) |
 | P0.6 | sonde xrt::bo (ci-dessus) | BW host_coherent, scaling cols |
 | P0.10 | prefill/decode 4K/32K/128K | full_matrix |
+
+---
+
+## 9. PLAN 5070 FINAL — NVFP4 + KV turbo4 + Voie A (2026-09-21, profiler_tiers)
+
+Décision de configuration, ancrée sur les runs `profiler_tiers/SORTIE_5070*.txt`
+(GGUF réel Marco-Nano 8B-A0.6B + modèle 35B-A3B, VRAM 8 Go garde 8 %) :
+
+### 9.1 Configuration retenue
+
+| Paramètre | Valeur | Justification |
+|---|---|---|
+| Experts | **NVFP4 (1.25 MB/exp)** | résidence 143/256 vs 73/256 en Q4 → hit GPU 0.56 vs 0.25 |
+| KV | **turbo4 (K et V)** | ×0.258 vs f16 (0.16 GiB @8k), texte ≈ f16 validé Phase 2 |
+| K=turbo3 | **INTERDIT** | bug upstream : garbage CPU ET CUDA (Phase 2) — V=turbo3 OK |
+| Résidence cible | **128–143 experts/couche** | frontière VRAM exacte = 143 (sweep) ; 128 = marge KV long ctx |
+| Overflow restant | 4.4 MB/tok → **0.14 ms/tok PCIe** | gen5 x8 = 31.5 GB/s ; goulot dur seulement si > 5 ms |
+| Contexte long | 64k possible (KV turbo4 1.29 GiB → 119/256, hit 0.46) | le turbo4 est ce qui rend 64k tenable sur 8 Go |
+| Decode attendu | ~110 t/s (BW-bound, dense backbone ~1.5 GB/tok) | NVFP4 n'accélère PAS le decode, il augmente le hit |
+
+### 9.2 Voie A — répartition GPU / NPU
+
+- GPU (5070) : flux principal — dense backbone + experts résidents (hit ~0.56).
+- NPU XDNA2 (sur-package Strix, zéro PCIe) : **overflow experts** (0.44) au coût
+  ×16/hit GPU — jamais backend principal (bench.json Phase 1).
+- Agrégat simulé Voie A : 61.5 t/s — à confirmer machine cible (§5 ci-dessus,
+  2 process + mmap partagé).
+- Alternative mono-flux : Voie B (§6) si le planner partitionne MUL_MAT.
+
+### 9.3 Séquence de validation sur la machine cible
+
+```bash
+# 1) vérifier les hypothèses du plan (remplacer ASSUMED par MEASURED) :
+py gpu_tier_profiler.py raw   --machine 5070 --gguf <model>.gguf --ctx 8192
+py gpu_tier_profiler.py sweep --machine 5070 --model 35b --expert-fmt nvfp4 --kv turbo4 --ctx 8192
+llama-bench -m <model>.gguf -p 512 -n 128 -fa on   # recalibre BW_eff (hyp. 165 GB/s)
+# 2) microbenchs P0.2/P0.6 (sections 2-3) puis Voie A (section 5)
+```
+
+Hypothèses à confirmer en premier : 1.25 MB/expert NVFP4 réel (requant),
+BW_eff 165 GB/s, coût overflow NPU ×16.
+
+### 9.4 Mapping repos (rôles)
+
+| Repo | Rôle | Ce qui vient d'ici |
+|---|---|---|
+| **GaTmanes/xdna2** | **Runtime d'inférence complet (GGUF → génération) — le plus avancé / principal** | backend d'exécution Voie A/B ; c'est lui qui porte les kernels et le cycle génération |
+| **Tagman45/adaptive-xdna-runtime** | Générateur + planner adaptatif de kernels + oracles — actif, couche supérieure | `xdna2/planner_core.py`, `adapter_bridge.py`, `profiler_tiers/` (plans/sweeps), oracles P0 |
+
+Le planner (couche supérieure) émet placements/variants ; le runtime xdna2 les
+exécute ; les oracles re-mesurent et recalibrent (ASSUMED → MEASURED, §0).
