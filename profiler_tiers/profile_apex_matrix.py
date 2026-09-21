@@ -168,6 +168,7 @@ def main():
     ap.add_argument("--compute-buffer", type=float, default=0.5)
     ap.add_argument("--rail", type=float, default=0.3)
     ap.add_argument("--machine", default="both", choices=["1080", "5070", "both"])
+    ap.add_argument("--matrix", action="store_true", help="afficher la matrice layer par layer")
     args = ap.parse_args()
 
     H = parse_header(args.header)
@@ -228,14 +229,15 @@ def main():
     for tname in sorted(type_bytes, key=lambda x: -type_bytes[x]):
         print(f"  {tname:<10} {type_count[tname]:>4} tensors  {type_bytes[tname]/2**30:8.2f} GiB")
 
-    print("\n=== MATRICE PAR COUCHE (mesurée) ===")
-    for lay in sorted(per_layer, key=int):
-        d = per_layer[lay]
-        def q(f):
-            return d.get(f, [0, "-", ()])[1]
-        rg_b = d.get("routed_gu", [0])[0] + d.get("routed_down", [0])[0]
-        print(f"  blk{lay:>3}: gu={q('routed_gu'):<9} down={q('routed_down'):<9} "
-              f"shexp={q('shared_down'):<9} backbone={q('backbone'):<9} | routed {rg_b/2**30:.3f} GiB")
+    if args.matrix:
+        print("\n=== MATRICE PAR COUCHE (mesurée) ===")
+        for lay in sorted(per_layer, key=int):
+            d = per_layer[lay]
+            def q(f):
+                return d.get(f, [0, "-", ()])[1]
+            rg_b = d.get("routed_gu", [0])[0] + d.get("routed_down", [0])[0]
+            print(f"  blk{lay:>3}: gu={q('routed_gu'):<9} down={q('routed_down'):<9} "
+                  f"shexp={q('shared_down'):<9} backbone={q('backbone'):<9} | routed {rg_b/2**30:.3f} GiB")
 
     print("\n=== PROFIL DECODE (contexte", args.context, ", kv", args.kv, ", skew", args.skew, ") ===")
     for mid in ([args.machine] if args.machine != "both" else ["1080", "5070"]):
@@ -249,9 +251,8 @@ def main():
               f"(H2D {r['t_h2d']:.2f} ms vs CPU {r['t_cpu']:.2f} ms) -> t_miss {r['t_miss']:.2f} ms")
         print(f"  GPU actif {r['t_gpu']:.2f} ms + miss {r['t_miss']:.2f} ms -> **{r['tps']:.1f} t/s**")
 
-    print("\n[CAVEATS] (1) header = variante mudler Balanced (recette publique) — le fichier "
-          "LuffyTheFox 'Genesis-MTP-APEX' est gated : memes shapes attendues (meme arch 35B-A3B), "
-          "quants possiblement differents selon la recette exacte du repo. "
+    print(f"\n[CAVEATS] (1) header = {Path(args.header).name} — si recette Luffy/Genesis : "
+          "validation par total pondéré vs taille fichier. "
           "(2) KV f16 borne haute : couches GDN = state recurrent < KV attention. "
           "(3) skew/h2d/cpu_bw = ASSUMED -> calibration microbench_h2d.py + trace routing sur cible.")
 
