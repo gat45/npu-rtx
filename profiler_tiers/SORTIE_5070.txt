@@ -1,0 +1,50 @@
+== RAW E:/oneplus/models_marco_v2/Marco-Nano-INSTRUCT-8B-A0.6B-V2.i1-Q4_0.gguf ==
+machine: RTX 5070 Laptop 8 GB (machine cible, CUDA sm_120)  VRAM 8.0 GB  BW_eff 165.0 GB/s  PCIe gen5 x8 (31.5 GB/s)
+arch=qwen3moe | 338 tenseurs | poids total 4.27 GiB
+fit VRAM 8.0 Go (garde 8%): OUI — tout résident, decode BW-bound
+[KV f16 @ctx=8192] 0.44 GiB -> +KV fit: OUI
+  general.name = Marco Nano INSTRUCT 8B A0.6B V2
+  qwen3moe.expert_count = 232
+  qwen3moe.expert_used_count = 8
+  qwen3moe.context_length = 32768
+=== PLAN RTX 5070 Laptop 8 GB (machine cible, CUDA sm_120) ===
+backend CUDA sm_120 | BW théo 384.0 GB/s | BW eff 165.0 GB/s (measured-roofline-FLM-9B-rewritten-5070)
+PCIe gen5 x8 = 31.5 GB/s (goulot D2/FATE streaming experts)
+
+[KV] Qwen3.5-35B-A3B ctx=8192 turbo4: 0.16 GiB (×0.258 vs f16 — validé Phase 2, texte ≈ f16)
+[VRAM] budget utile 6.85 GiB -> après KV: 6.69 GiB pour poids+experts
+[EXPERTS] 256/couche × 2.45 MB | résident max VRAM: 73/couche
+  -> résidence 64/couche = hit GPU 0.25 | overflow 0.75
+  [PCIe] overflow/token ≈ 14.7 MB -> 0.47 ms/tok (goulot dur si > 5 ms)
+  [NPU XDNA2] overflow traitable sur NPU (coût ≈ 16× hit GPU, sur-package Strix: zéro PCIe) — Voie A double-flux 61.5 t/s agrégat simulé
+
+[BUS MEMOIRE] octets/token ≈ 1.50 GB -> decode ≈ 109.6 t/s (BW-bound, goulot #2)
+  Voie A (5070+NPU double-flux): 61.5 t/s agrégat (simulé Phase 1, à confirmer machine cible)
+usage: gpu_tier_profiler.py plan [-h] --machine {5070,1080} [--model {35b,9b}]
+                                 [--kv {f16,q8_0,turbo3,turbo4}]
+                                 [--experts EXPERTS] [--ctx CTX]
+gpu_tier_profiler.py plan: error: argument --model: invalid choice: 'marco8b' (choose from 35b, 9b)
+métrique                    5070 (cible)              1080 (dev)            
+----------------------------------------------------------------------------
+BW théo GB/s                384 (GDDR7)               320 (GDDR5X)          
+BW eff GB/s                 165 (51%, roofline)       205 (64% Pascal)      
+PCIe                        gen5 x8 = 31.5 GB/s       gen3 x16 = 15.75 GB/s 
+VRAM                        8 GB                      8 GB                  
+KV turbo4 (8k tok, 35B)     0.16 GiB                  0.16 GiB              
+K=turbo3                    INTERDIT (bug)            INTERDIT (bug)        
+NPU XDNA2                   oui (Voie A 61.5 t/s sim.)non                   
+sm                          sm_120                    sm_61 (patch D512)    
+rôle                        cible perf                banc validation logique
+=== PLAN RTX 5070 Laptop 8 GB (machine cible, CUDA sm_120) ===
+backend CUDA sm_120 | BW théo 384.0 GB/s | BW eff 165.0 GB/s (measured-roofline-FLM-9B-rewritten-5070)
+PCIe gen5 x8 = 31.5 GB/s (goulot D2/FATE streaming experts)
+
+[KV] Marco-Nano 8B-A0.6B (qwen3moe, Q4_0 réel) ctx=8192 turbo4: 0.15 GiB (×0.258 vs f16 — validé Phase 2, texte ≈ f16)
+[VRAM] budget utile 6.85 GiB -> après KV: 6.71 GiB pour poids+experts
+[EXPERTS] 232/couche × 2.45 MB | résident max VRAM: 81/couche
+  -> résidence 81/couche = hit GPU 0.35 | overflow 0.65
+  [PCIe] overflow/token ≈ 12.8 MB -> 0.40 ms/tok (goulot dur si > 5 ms)
+  [NPU XDNA2] overflow traitable sur NPU (coût ≈ 16× hit GPU, sur-package Strix: zéro PCIe) — Voie A double-flux 61.5 t/s agrégat simulé
+
+[BUS MEMOIRE] octets/token ≈ 1.51 GB -> decode ≈ 109.5 t/s (BW-bound, goulot #2)
+  Voie A (5070+NPU double-flux): 61.5 t/s agrégat (simulé Phase 1, à confirmer machine cible)

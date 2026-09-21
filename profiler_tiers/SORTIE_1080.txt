@@ -1,0 +1,33 @@
+== RAW E:/oneplus/models_marco_v2/Marco-Nano-INSTRUCT-8B-A0.6B-V2.i1-Q4_0.gguf ==
+machine: GTX 1080 8 GB (dev, Pascal sm_61)  VRAM 8.0 GB  BW_eff 205.0 GB/s  PCIe gen3 x16 (15.75 GB/s)
+arch=qwen3moe | 338 tenseurs | poids total 4.27 GiB
+fit VRAM 8.0 Go (garde 8%): OUI — tout résident, decode BW-bound
+[KV f16 @ctx=8192] 0.44 GiB -> +KV fit: OUI
+  general.name = Marco Nano INSTRUCT 8B A0.6B V2
+  qwen3moe.expert_count = 232
+  qwen3moe.expert_used_count = 8
+  qwen3moe.context_length = 32768
+=== PLAN GTX 1080 8 GB (dev, Pascal sm_61) ===
+backend CUDA sm_61 (build-cu61, patch D512 smem) | BW théo 320.0 GB/s | BW eff 205.0 GB/s (Pascal-typical-64pct)
+PCIe gen3 x16 = 15.75 GB/s (goulot D2/FATE streaming experts)
+
+[KV] Qwen3.5-35B-A3B ctx=8192 turbo4: 0.16 GiB (×0.258 vs f16 — validé Phase 2, texte ≈ f16)
+[VRAM] budget utile 6.85 GiB -> après KV: 6.69 GiB pour poids+experts
+[EXPERTS] 256/couche × 2.45 MB | résident max VRAM: 73/couche
+  -> résidence 64/couche = hit GPU 0.25 | overflow 0.75
+  [PCIe] overflow/token ≈ 14.7 MB -> 0.93 ms/tok (goulot dur si > 5 ms)
+
+[BUS MEMOIRE] octets/token ≈ 1.50 GB -> decode ≈ 136.2 t/s (BW-bound, goulot #2)
+  ancre 1080 mesurée: Qwen9B IQ4NL = 32.9 t/s (cohérence ordre de grandeur)
+=== PLAN GTX 1080 8 GB (dev, Pascal sm_61) ===
+backend CUDA sm_61 (build-cu61, patch D512 smem) | BW théo 320.0 GB/s | BW eff 205.0 GB/s (Pascal-typical-64pct)
+PCIe gen3 x16 = 15.75 GB/s (goulot D2/FATE streaming experts)
+
+[KV] Marco-Nano 8B-A0.6B (qwen3moe, Q4_0 réel) ctx=8192 turbo4: 0.15 GiB (×0.258 vs f16 — validé Phase 2, texte ≈ f16)
+[VRAM] budget utile 6.85 GiB -> après KV: 6.71 GiB pour poids+experts
+[EXPERTS] 232/couche × 2.45 MB | résident max VRAM: 81/couche
+  -> résidence 81/couche = hit GPU 0.35 | overflow 0.65
+  [PCIe] overflow/token ≈ 12.8 MB -> 0.81 ms/tok (goulot dur si > 5 ms)
+
+[BUS MEMOIRE] octets/token ≈ 1.51 GB -> decode ≈ 136.0 t/s (BW-bound, goulot #2)
+  ancre 1080 mesurée: Qwen9B IQ4NL = 32.9 t/s (cohérence ordre de grandeur)
