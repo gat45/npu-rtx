@@ -1,0 +1,68 @@
+diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
+index faff097..1463a53 100644
+--- a/ggml/src/ggml-cpu/ggml-cpu.c
++++ b/ggml/src/ggml-cpu/ggml-cpu.c
+@@ -1612,6 +1612,52 @@ static void * incr_ptr_aligned(void ** p, size_t size, size_t align) {
+     return ptr;
+ }
+ 
++// ============================================================================
++// [routing-trace] 2026-09-21 — capture des expert IDs par couche (MUL_MAT_ID)
++// Objectif : remplacer le skew ASSUMED du profiler 35B/5070 par une
++// distribution MEASURED (fréquence experts, overlap inter-tokens, skew fit).
++// Activation : GGML_ROUTING_TRACE=<chemin_csv>  (désactivé si absent)
++// Sortie : une ligne CSV par nœud MUL_MAT_ID (thread 0 uniquement) :
++//   layer,src0_name,n_tokens,top_k,n_expert,ids(; par token)
++// Post-traitement : npu-rtx/profiler_tiers/analyze_routing_trace.py
++// ============================================================================
++#include <stdio.h>
++
++static int ggml_routing_trace_enabled(void) {
++    static int cached = -1;
++    if (cached == -1) {
++        const char * e = getenv("GGML_ROUTING_TRACE");
++        cached = (e && e[0]) ? 1 : 0;
++    }
++    return cached;
++}
++
++static void ggml_routing_trace_node(
++        const struct ggml_tensor * ids,
++        const struct ggml_tensor * src0,
++        int n_ids, int n_tokens, int n_as) {
++    static FILE * f = NULL;
++    if (!f) {
++        const char * e = getenv("GGML_ROUTING_TRACE");
++        f = fopen(e, "a");
++        if (!f) return;
++        setvbuf(f, NULL, _IOLBF, 1 << 16);
++        fprintf(f, "layer,src0_name,n_tokens,top_k,n_expert,ids\n");
++    }
++    int layer = -1;
++    const char * nm = src0->name ? src0->name : "";
++    if (nm[0]=='b' && nm[1]=='l' && nm[2]=='k' && nm[3]=='.') layer = atoi(nm+4);
++    fprintf(f, "%d,\"%s\",%d,%d,%d,", layer, nm, n_tokens, n_ids, n_as);
++    for (int iid1 = 0; iid1 < n_tokens; ++iid1) {
++        for (int id = 0; id < n_ids; ++id) {
++            const int32_t v = *(const int32_t *)((const char *) ids->data + iid1*ids->nb[1] + id*ids->nb[0]);
++            fprintf(f, "%s%d", (iid1==0 && id==0) ? "" : " ", v);
++        }
++        if (iid1 < n_tokens-1) fprintf(f, ";");
++    }
++    fprintf(f, "\n");
++}
++
+ static void ggml_compute_forward_mul_mat_id_impl(
+         const struct ggml_compute_params * params,
+               struct ggml_tensor * dst,
+@@ -1724,6 +1770,10 @@ static void ggml_compute_forward_mul_mat_id_impl(
+     }
+ 
+     if (ith == 0) {
++        // [routing-trace] capture expert IDs (env-gated, désactivé par défaut)
++        if (ggml_routing_trace_enabled() && !use_row_mask) {
++            ggml_routing_trace_node(ids, src0, n_ids, (int) ids->ne[1], n_as);
++        }
+         // Provider table selected for this scheduler session (thread-local).
+         const struct ggml_moe_cache_api moe_cache = ggml_moe_cache_active();
+         ggml_backend_buffer_t src0_buffer =

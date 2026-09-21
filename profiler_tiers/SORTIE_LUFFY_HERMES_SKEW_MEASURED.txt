@@ -1,0 +1,41 @@
+GGUF v3 | arch=qwen35moe | blocks=41 experts=256 top-k=8
+tensors déclarés=753 parsés=753 (header 16.0 MB, tronqué=False)
+kv notables: general.architecture=qwen35moe, general.type=model, general.sampling.top_k=20, general.sampling.top_p=0.949999988079071, general.sampling.temp=1.0, general.name=Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive, general.finetune=3Ref, general.basename=KL0.0764, qwen35moe.embedding_length=2048, qwen35moe.attention.head_count=16, qwen35moe.attention.head_count_kv=2, qwen35moe.expert_count=256, qwen35moe.expert_used_count=8, qwen35moe.attention.key_length=256, qwen35moe.attention.value_length=256, qwen35moe.expert_feed_forward_length=512, qwen35moe.expert_shared_feed_forward_length=512, general.size
+
+=== TOTAUX FAMILLES (mesurés, GiB) ===
+  routed        22.87
+  shared         0.13
+  backbone       1.13
+  output         0.39
+  embd           0.33
+  n_blk          0.00
+  routed/couche 0.558 GiB | /expert 2.34 MB
+  TOTAL fichier estimé 24.85 GiB (pondéré bpw)
+
+=== HISTOGRAMME TYPES ===
+  Q5_K         81 tensors     14.08 GiB
+  Q6_K        222 tensors      9.12 GiB
+  Q8_0        136 tensors      1.52 GiB
+  F32         308 tensors      0.08 GiB
+  F16           4 tensors      0.05 GiB
+  BF16          2 tensors      0.00 GiB
+
+=== PROFIL DECODE (contexte 8192 , kv f16 , skew 0.305 ) ===
+
+[1080] GTX 1080 8GB (dev, sm_61)
+  pool experts total 22.87 GiB | /expert 2.34 MB
+  permanent (backbone+shared+out+embd) 1.98 GiB | KV 0.64 GiB
+  budget experts VRAM 3.94 GiB -> 44/256 résidents -> hit 0.58
+  miss 3.3 experts/tok : compute CPU (H2D 0.49 ms vs CPU 0.16 ms) -> t_miss 0.16 ms
+  GPU actif 10.41 ms + miss 0.16 ms -> **94.7 t/s**
+
+[5070] RTX 5070 Laptop 8GB (cible, sm_120)
+  pool experts total 22.87 GiB | /expert 2.34 MB
+  permanent (backbone+shared+out+embd) 1.98 GiB | KV 0.64 GiB
+  budget experts VRAM 3.94 GiB -> 44/256 résidents -> hit 0.58
+  miss 3.3 experts/tok : compute CPU (H2D 0.25 ms vs CPU 0.16 ms) -> t_miss 0.16 ms
+  GPU actif 12.93 ms + miss 0.16 ms -> **76.4 t/s**
+
+[CAVEATS] (1) header = header_luffy_hermes_mtp.bin — si recette Luffy/Genesis : validation par total pondéré vs taille fichier. (2) KV f16 borne haute : couches GDN = state recurrent < KV attention. (3) skew/h2d/cpu_bw = ASSUMED -> calibration microbench_h2d.py + trace routing sur cible.
+
+[OK] script: profile_apex_matrix.py
