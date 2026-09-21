@@ -1,56 +1,24 @@
-=== CRITICAL PATH 5070/XDNA2 — RTX 5070 Laptop 8 Go (cible) — Qwen3.5/3.6-35B-A3B ===
-ctx=8192 KV=turbo4 experts=nvfp4 skew=0.85 | résidence 101/256, hit 0.45 (WARM 55% / COLD 0%)
-
-[DÉCOMPOSITION T_token — segments indépendants, PAS une somme]
-  T_router (CPU, 40 couches)   0.80 ms
-  T_sync   (40 couches)        0.20 ms
-  T_H2D    (miss WARM+COLD)    0.27 ms  [pageable serait 0.84]
-  T_GPU    (backbone+résidents)9.12 ms
-  T_NPU    (overflow XDNA2)    0.40 ms  [sur-package, overlap possible]
-
-[CHEMIN CRITIQUE par stratégie]
-  S0_serial      10.39 ms -> 96.2 t/s
-  S1_prefetch    10.12 ms -> 98.8 t/s  <- optimal
-  S2_npu_split   10.12 ms -> 98.8 t/s  <- optimal
-
-[AXE 01] wall 10.79 ms vs critical path 10.12 ms -> overlap récupère 6%
-
-[LEDGER — Δchemin critique vs S0 (coûts inclus)]
-  CACHE (101 résidents)    ΔCP         +0.26 ms | coût: VRAM 4.74 GiB (opportunity) ; CP sans cache 10.65 ms
-  PREFETCH (S1 vs S0)      ΔCP         +0.27 ms | coût: PCIe gaspillé si prédiction fausse (usefulness à mesurer)
-  PINNED (vs pageable)     ΔCP         +0.57 ms | coût: RAM pinned soustraite à l'OS (registration)
-  QUANT (NVFP4 vs Q4)      ΔCP voir ledger moe_axis | coût: requant + dequant compute (voir moe_axis_profiler ledger)
-  NPU_SPLIT (S2 vs best)   ΔCP         +0.00 ms | coût: sync NPU 0.15 ms/tok + instabilité runtime (à instrumenter XRT)
-
-[XDNA2 — axes à instrumenter sur cible (aucun mesuré ici)]
-  xrt.dispatch, xrt.bo.alloc, dma.bytes, cpu/npu gap, overlap GPU/NPU réel
-
-[PROVENANCE] T_ROUTER/T_SYNC/SYNC_NPU/NPU_DDR = ASSUMED ; h2d = ancre MaxDam ; NPU overflow x16 = bench.json Phase 1 (OP15/FLM, transposition HX 365 à valider)
-=== CRITICAL PATH 5070/XDNA2 — RTX 5070 Laptop 8 Go (cible) — Qwen3.5/3.6-35B-A3B ===
-ctx=8192 KV=turbo4 experts=q4 skew=1.0 | résidence 51/256, hit 0.20 (WARM 20% / COLD 60%)
-
-[DÉCOMPOSITION T_token — segments indépendants, PAS une somme]
-  T_router (CPU, 40 couches)   0.80 ms
-  T_sync   (40 couches)        0.20 ms
-  T_H2D    (miss WARM+COLD)    3.13 ms  [pageable serait 4.76]
-  T_GPU    (backbone+résidents)9.11 ms
-  T_NPU    (overflow XDNA2)    0.87 ms  [sur-package, overlap possible]
-
-[CHEMIN CRITIQUE par stratégie]
-  S0_serial      13.25 ms -> 75.5 t/s
-  S1_prefetch    10.11 ms -> 98.9 t/s  <- optimal
-  S2_npu_split   10.11 ms -> 98.9 t/s  <- optimal
-
-[AXE 01] wall 14.11 ms vs critical path 10.11 ms -> overlap récupère 28%
-
-[LEDGER — Δchemin critique vs S0 (coûts inclus)]
-  CACHE (51 résidents)     ΔCP         -2.06 ms | coût: VRAM 4.74 GiB (opportunity) ; CP sans cache 11.19 ms [ATTENTION: contre-factuel suppose RAM>=pool — irréaliste ici, f_ram<1]
-  PREFETCH (S1 vs S0)      ΔCP         +3.13 ms | coût: PCIe gaspillé si prédiction fausse (usefulness à mesurer)
-  PINNED (vs pageable)     ΔCP         +1.63 ms | coût: RAM pinned soustraite à l'OS (registration)
-  QUANT (NVFP4 vs Q4)      ΔCP voir ledger moe_axis | coût: requant + dequant compute (voir moe_axis_profiler ledger)
-  NPU_SPLIT (S2 vs best)   ΔCP         +0.00 ms | coût: sync NPU 0.15 ms/tok + instabilité runtime (à instrumenter XRT)
-
-[XDNA2 — axes à instrumenter sur cible (aucun mesuré ici)]
-  xrt.dispatch, xrt.bo.alloc, dma.bytes, cpu/npu gap, overlap GPU/NPU réel
-
-[PROVENANCE] T_ROUTER/T_SYNC/SYNC_NPU/NPU_DDR = ASSUMED ; h2d = ancre MaxDam ; NPU overflow x16 = bench.json Phase 1 (OP15/FLM, transposition HX 365 à valider)
+[DECOUPLAGE] --npu-ddr-gbs absent -> S2 NPU-split = UNKNOWN (constante OP15 refusee, calibrer via sonde XRT / microbench cible)
+[DECOUPLAGE] --npu-overflow-cost absent -> ligne ledger NPU_SPLIT = UNKNOWN
+Traceback (most recent call last):
+  File "E:\oneplus\geniex_harness\npu-rtx\profiler_tiers\critical_path_5070.py", line 161, in <module>
+    main()
+    ~~~~^^
+  File "E:\oneplus\geniex_harness\npu-rtx\profiler_tiers\critical_path_5070.py", line 107, in main
+    seg = segments(m, args, hit, res)
+  File "E:\oneplus\geniex_harness\npu-rtx\profiler_tiers\critical_path_5070.py", line 50, in segments
+    t_npu = bytes_miss / (args.npu_ddr_gbs * 1e9) * 1000 + SYNC_COST_NPU_MS
+                          ~~~~~~~~~~~~~~~~~^~~~~
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'float'
+[DECOUPLAGE] --npu-ddr-gbs absent -> S2 NPU-split = UNKNOWN (constante OP15 refusee, calibrer via sonde XRT / microbench cible)
+[DECOUPLAGE] --npu-overflow-cost absent -> ligne ledger NPU_SPLIT = UNKNOWN
+Traceback (most recent call last):
+  File "E:\oneplus\geniex_harness\npu-rtx\profiler_tiers\critical_path_5070.py", line 161, in <module>
+    main()
+    ~~~~^^
+  File "E:\oneplus\geniex_harness\npu-rtx\profiler_tiers\critical_path_5070.py", line 107, in main
+    seg = segments(m, args, hit, res)
+  File "E:\oneplus\geniex_harness\npu-rtx\profiler_tiers\critical_path_5070.py", line 50, in segments
+    t_npu = bytes_miss / (args.npu_ddr_gbs * 1e9) * 1000 + SYNC_COST_NPU_MS
+                          ~~~~~~~~~~~~~~~~~^~~~~
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'float'

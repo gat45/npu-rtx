@@ -18,17 +18,21 @@ Ledger final : 5 leviers (CACHE, PREFETCH, PINNED, QUANT, NPU_SPLIT) en
 """
 import argparse
 import json
+import math
 import sys
 
-from moe_axis_profiler import (MACHINES, MODEL, NPU_OVERFLOW_COST, GI,
+from moe_axis_profiler import (MACHINES, MODEL, GI,
                                budget, warm_tier, kv_gib, hit_skewed)
 
 # Ancres / hypothèses (ASSUMED sauf mention)
 T_ROUTER_LAYER_MS = 0.02     # dispatch router + argmax top-k par couche (ASSUMED)
 T_SYNC_LAYER_MS = 0.005      # sync CPU->GPU par couche (ASSUMED)
-NPU_DDR_GBS = 21.93          # ancre FLM mesurée (OP15/FLM) — proxy BW NPU unified (ASSUMED sur HX 365)
 H2D_PAGEABLE_GBS = 6.5       # ancre MaxDam
 SYNC_COST_NPU_MS = 0.15      # coût dispatch+sync NPU par token (ASSUMED, à instrumenter XRT)
+# DÉCOUPLAGE OP15 (2026-09-21) : plus AUCUNE constante OP15 en dur — 21.93 GB/s (FLM OP15)
+# et overflow x16 (bench Phase 1 OP15/FLM) étaient des chiffres OP15. Ils doivent être
+# fournis pour la cible HX 365 via flags (--npu-ddr-gbs / --npu-overflow-cost) ou
+# microbench/sonde XRT. Sans eux : le segment NPU est marqué UNKNOWN, pas simulé.
 
 
 def segments(m, args, hit, res):
@@ -42,8 +46,8 @@ def segments(m, args, hit, res):
     # GPU : backbone + experts résidents lus en BW
     act_gpu = MODEL["top_k"] * per_exp * hit + MODEL["dense_backbone_bytes"]
     t_gpu = act_gpu / (m["bw_eff_gbs"] * 1e9) * 1000
-    # NPU : overflow sur-package (lit la RAM unifiée à NPU_DDR_GBS — ASSUMED)
-    t_npu = bytes_miss / (NPU_DDR_GBS * 1e9) * 1000 + SYNC_COST_NPU_MS
+    # NPU : overflow sur-package (lit la RAM unifiée à npu_ddr_gbs — fourni par l'utilisateur/cible)
+    t_npu = bytes_miss / (args.npu_ddr_gbs * 1e9) * 1000 + SYNC_COST_NPU_MS
     # Contre-factuel pageable : swap UNIQUEMENT les jambes H2D (WARM + jambe H2D du COLD),
     # la jambe SSD reste à ssd_gbs — sinon PINNED paraît négatif en régime COLD-dominant.
     bytes_warm = seg_warm = h_warm * MODEL["top_k"] * per_exp
@@ -55,7 +59,7 @@ def segments(m, args, hit, res):
             "h_warm": h_warm, "h_cold": h_cold, "bytes_miss": bytes_miss}
 
 
-def strategies(seg, prefetch):
+def strategies(seg, prefetch, npu_ok=True):
     """Chemins critiques des 3 stratégies (ms)."""
     s0 = seg["t_router"] + seg["t_h2d"] + seg["t_gpu"] + seg["t_sync"]
     if prefetch:
@@ -64,7 +68,7 @@ def strategies(seg, prefetch):
     else:
         s1 = s0
     # Voie A : GPU ne lit que résidents, NPU prend l'overflow en parallèle
-    s2 = seg["t_router"] + max(seg["t_gpu"], seg["t_npu"]) + seg["t_sync"]
+    s2 = seg["t_router"] + max(seg["t_gpu"], seg["t_npu"]) + seg["t_sync"] if npu_ok else math.inf
     return {"S0_serial": s0, "S1_prefetch": s1, "S2_npu_split": s2}
 
 
@@ -79,6 +83,10 @@ def main():
     ap.add_argument("--rail", type=float, default=0.3)
     ap.add_argument("--ram-gb", dest="ram_gb", type=float, default=32.0)
     ap.add_argument("--ssd-gbs", dest="ssd_gbs", type=float, default=5.0)
+    ap.add_argument("--npu-ddr-gbs", dest="npu_ddr_gbs", type=float, default=None,
+                    help="BW NPU HX 365 (GB/s) — OBLIGATOIRE pour S2 (aucune valeur OP15 par défaut)")
+    ap.add_argument("--npu-overflow-cost", dest="npu_overflow_cost", type=float, default=None,
+                    help="coût overflow NPU en x hit GPU — OBLIGATOIRE pour le ledger NPU_SPLIT")
     args = ap.parse_args()
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -86,12 +94,19 @@ def main():
         pass
 
     m = MACHINES[args.machine]
+    # Garde-fou découplage : sans BW NPU fournie, S2/ledger NPU sont UNKNOWN (pas simulés)
+    npu_ok = args.npu_ddr_gbs is not None and args.npu_ddr_gbs > 0
+    if not npu_ok:
+        print("[DECOUPLAGE] --npu-ddr-gbs absent -> S2 NPU-split = UNKNOWN (constante OP15 refusee, "
+              "calibrer via sonde XRT / microbench cible)")
+    if args.npu_overflow_cost is None:
+        print("[DECOUPLAGE] --npu-overflow-cost absent -> ligne ledger NPU_SPLIT = UNKNOWN")
     cache_b, per_exp, res_max, kv = budget(m, args)
     res = min(int(res_max), MODEL["experts"])
     hit = hit_skewed(res, args.skew)
     seg = segments(m, args, hit, res)
     _, f_ram, _, _, _, _, _ = warm_tier(m, args, hit)
-    strat = strategies(seg, prefetch=True)
+    strat = strategies(seg, prefetch=True, npu_ok=npu_ok)
 
     print(f"=== CRITICAL PATH 5070/XDNA2 — {m['label']} — {MODEL['label']} ===")
     print(f"ctx={args.ctx} KV={args.kv} experts={args.expert_fmt} skew={args.skew}"
@@ -132,6 +147,10 @@ def main():
         g = f"{gain:+.2f} ms" if gain is not None else "voir ledger moe_axis"
         print(f"  {name:<24} ΔCP {g:>16} | {cost}")
 
+    if args.npu_overflow_cost is not None:
+        print(f"\n[LEDGER — NPU_SPLIT coût overflow x{args.npu_overflow_cost} (fourni cible, à valider sonde XRT)]")
+    else:
+        print("\n[LEDGER — NPU_SPLIT coût overflow UNKNOWN (constante OP15 refusée)")
     print("\n[XDNA2 — axes à instrumenter sur cible (aucun mesuré ici)]")
     print("  xrt.dispatch, xrt.bo.alloc, dma.bytes, cpu/npu gap, overlap GPU/NPU réel")
     print("\n[PROVENANCE] T_ROUTER/T_SYNC/SYNC_NPU/NPU_DDR = ASSUMED ; h2d = ancre MaxDam ;"

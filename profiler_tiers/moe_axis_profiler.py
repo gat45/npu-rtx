@@ -34,7 +34,10 @@ MODEL = {"label": "Qwen3.5/3.6-35B-A3B", "n_layers": 40, "experts": 256, "top_k"
          "permanent_gib": 1.5,          # emb + LM head (vocab 248k) + 30 GDN + 10 attn + 40 routers + 40 shared experts
          "dense_backbone_bytes": 1.5e9, # 85.2 % du trafic (vLLM #51197)
          "compute_buffer_gib": 0.5, "rail_gib": 0.3}
-NPU_OVERFLOW_COST = 16.0
+# DÉCOUPLAGE OP15 (2026-09-21) : 16× et 61.5 t/s venaient de la simu Phase 1 calée
+# sur OP15/FLM (Snapdragon/HTP) — MATÉRIEL DIFFÉRENT de XDNA2 (HX 365). Plus de
+# valeur par défaut : fournie via --npu-overflow-cost (sonde XRT cible), sinon UNKNOWN.
+NPU_OVERFLOW_COST = None  # ex-16.0 (OP15) — refusé en dur
 GI = 1024 ** 3
 
 
@@ -137,6 +140,8 @@ def main():
     ap.add_argument("--rail", type=float, default=0.3)
     ap.add_argument("--ram-gb", dest="ram_gb", type=float, default=32.0)
     ap.add_argument("--ssd-gbs", dest="ssd_gbs", type=float, default=5.0)
+    ap.add_argument("--npu-overflow-cost", dest="npu_overflow_cost", type=float, default=None,
+                    help="coût overflow NPU (x hit GPU) — aucune valeur OP15 par défaut (matériel différent)")
     ap.add_argument("--prefetch", action="store_true")
     args = ap.parse_args()
     try:
@@ -176,8 +181,11 @@ def main():
           f" -> effectif {1000/t_tok:.1f} t/s")
     print(f"[AXE 18] marginal: +1 GiB cache = +{GI/per_exp/MODEL['n_layers']:.0f} experts"
           f" -> dHit/dGiB = {hit_skewed(min(int((cache_b+GI)/per_exp/MODEL['n_layers']),256), args.skew)-hit:+.3f}")
-    # NPU overflow (Voie A) rappel
-    print(f"[Voie A] overflow {1-hit:.2f} sur NPU (x{NPU_OVERFLOW_COST:.0f}/hit, sur-package) — agrégat sim. 61.5 t/s")
+    # NPU overflow (Voie A) : UNKNOWN sans constante fournie (matériel XDNA2 ≠ OP15)
+    if args.npu_overflow_cost is not None:
+        print(f"[Voie A] overflow {1-hit:.2f} sur NPU XDNA2 (x{args.npu_overflow_cost:.0f}/hit, sur-package) — à valider par sonde XRT")
+    else:
+        print(f"[Voie A] overflow {1-hit:.2f} sur NPU XDNA2 — COÛT UNKNOWN (constante OP15 refusée ; --npu-overflow-cost requis)")
     print("\n[LEDGER NET_HARDWARE_GAIN]")
     for name, h, t in ledger(args, m):
         print(f"  {name:<32} hit {h:.2f} | {t:.1f} t/s")
