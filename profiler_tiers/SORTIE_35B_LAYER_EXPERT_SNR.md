@@ -27,7 +27,14 @@
 
 **Lecture** : le motif "premières/dernières couches plus sensibles" (hypothèse APEX) est
 **conforté en SNR expert-grain** sur le 35B réel — couches 0 et 1 saines mais 28, 32–34,
-36, 38–39 fragilisées. Le down est partout ~6 dB au-dessus du gate/up (Q5_0 vs Q4_0).
+36, 38–39 fragilisées.
+
+⚠️ **CORRECTION contrôle quantizer-égal (2026-09-21)** : le "down ~6 dB au-dessus"
+était **un artefact Q5_0 vs Q4_0**, pas une propriété intrinsèque. À quantizer égal
+(Q4_0 sur les 3 familles, couches 0–1) : gate 21.14 / up 21.22 / down 22.14–21.31 —
+écart ≤ 1 dB. Idem Q5_0 uniforme (27.2–28.2 partout). Le ranking des experts fragiles
+reste identique aux deux quantizers (mêmes argmin) → l'index de fragilité est
+**invariant au quantizer**, exploitable tel quel.
 
 ## Top fragiles (à garder Q8_0, coût VRAM négligeable)
 

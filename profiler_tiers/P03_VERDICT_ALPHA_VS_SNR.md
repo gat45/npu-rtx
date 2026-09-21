@@ -47,7 +47,21 @@ gap 0.12 · ent 0.34.**
   lui-même (coût ~1.5 h/40 couches, déjà fait) et les proxies activation
   (Δrouter/Hessian) — à tester en P0-2 avant de trancher.
 
-## Limite déclarée
+## Addendum (même jour) — statistique propre + contrôle quantizer-égal
+
+1. **scipy.spearmanr + bootstrap CI95** (mon premier calcul artisanal gérait mal
+   les ties — 86.1 % des SNR dupliqués par l'arrondi 2 décimales) :
+   global ρ(SNR,decay) = **−0.184 [−0.238, −0.127], p=4e-13** → significatif mais
+   faible, verdict inchangé. Nouveau : **ρ(SNR,gap) = +0.040 (p=0.12, NS)** →
+   gap orthogonal au SNR ; mais **ρ(decay,gap) = +0.541** → decay et gap sont
+   redondants entre eux (une seule dimension spectrale, pas deux). Signe
+   Spearman/Pearson inversé sur 1/down (−0.255 vs +0.216) → relation non linéaire.
+2. **Contrôle quantizer-égal (couches 0–1)** : à Q4_0 uniforme, gate 21.14 /
+   up 21.22 / down 22.14–21.31 dB (écart ≤ 1 dB) ; à Q5_0 uniforme, 27.2–28.2
+   partout. **Le "down intrinsèquement plus robuste" était un artefact du
+   quantizer (Q5_0 vs Q4_0), pas une propriété de la famille.** Les argmin
+   (experts fragiles) sont identiques aux deux quantizers → l'index de fragilité
+   est invariant au quantizer.
 
 2 couches / 1 536 experts, source = requant Q8_0/F16 (pas FP8 natif), decay estimé
 au rank-32 (Halko). Extension aux 40 couches = relancer `d2_expert_spectral_scan.py`

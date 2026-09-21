@@ -1,0 +1,73 @@
+{
+ "src": "D:/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-Q8_K_P.gguf",
+ "tag": "ctrl_q4",
+ "rules": [
+  "ffn_(gate|up|down)_exps=Q4_0"
+ ],
+ "per_layer": {
+  "0": {
+   "down": [
+    {
+     "tensor": "blk.0.ffn_down_exps.weight",
+     "mean": 22.139434720018464,
+     "min": 21.01885695557696,
+     "argmin": 197,
+     "p5": 21.419130784845237,
+     "global": 22.139434720018464
+    }
+   ],
+   "gate": [
+    {
+     "tensor": "blk.0.ffn_gate_exps.weight",
+     "mean": 21.14254532481202,
+     "min": 18.410286990272702,
+     "argmin": 252,
+     "p5": 20.700983290038195,
+     "global": 21.14254532481202
+    }
+   ],
+   "up": [
+    {
+     "tensor": "blk.0.ffn_up_exps.weight",
+     "mean": 21.216319066719826,
+     "min": 20.884619955517767,
+     "argmin": 205,
+     "p5": 21.03858591446356,
+     "global": 21.216319066719826
+    }
+   ]
+  },
+  "1": {
+   "down": [
+    {
+     "tensor": "blk.1.ffn_down_exps.weight",
+     "mean": 21.306258922859058,
+     "min": 21.00509655712734,
+     "argmin": 105,
+     "p5": 21.221528531741306,
+     "global": 21.306258922859058
+    }
+   ],
+   "gate": [
+    {
+     "tensor": "blk.1.ffn_gate_exps.weight",
+     "mean": 21.279780541540227,
+     "min": 21.170325451320608,
+     "argmin": 225,
+     "p5": 21.239053439088003,
+     "global": 21.279780541540227
+    }
+   ],
+   "up": [
+    {
+     "tensor": "blk.1.ffn_up_exps.weight",
+     "mean": 21.27844406950774,
+     "min": 21.147929942167924,
+     "argmin": 225,
+     "p5": 21.252129476929024,
+     "global": 21.27844406950774
+    }
+   ]
+  }
+ }
+}
