@@ -40,6 +40,11 @@
 ---
 
 ## PHASE 2 — Validation kernels GPU (dev machine GTX 1080, représentation du tier GPU)
+> **STATUT 2026-09-21 : FAITE** — voir `RAPPORT_PHASE2_TURBO_1080_20260921.md`.
+> Pivot : `apply_turbo_cuda_v2.py` est un fossile (le fork porte sa stack CUDA canonique
+> avec rotation WHT). Build sm_61 OK après correctif smem D512 (`patches/turboquant-sm61-build.patch`).
+> N1 : FA turbo 117/117 OK. N2 : turbo4 validé end-to-end ; **bug upstream trouvé : K=turbo3
+> → garbage sur CPU ET CUDA** (set_rows sain, lecteur K en cause, indépendant de l'archi).
 - Compiler/tester `apply_turbo_cuda_v2.py` sur le build CUDA local (GTX 1080 sm_61 → valide
   la logique turbo3/turbo4, pas la perf Blackwell).
 - Vérifier les kernels Vulkan 1bit (dmmv_tq2/q1/matmul) si un loader Vulkan simple dispo —
