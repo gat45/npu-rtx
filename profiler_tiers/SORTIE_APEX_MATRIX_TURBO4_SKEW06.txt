@@ -1,0 +1,83 @@
+GGUF v3 | arch=qwen35moe | blocks=41 experts=256 top-k=8
+tensors déclarés=753 parsés=753 (header 16.0 MB, tronqué=False)
+kv notables: general.architecture=qwen35moe, general.type=model, general.sampling.top_k=20, general.sampling.top_p=0.949999988079071, general.sampling.temp=1.0, general.name=Safetensors, general.size_label=256x2.6B, general.license=apache-2.0, general.license.link=https://huggingface.co/Qwen/Qwen3.6-35B-A3B/blob/main/LICENSE, general.tags=['image-text-to-text'], qwen35moe.embedding_length=2048, qwen35moe.attention.head_count=16, qwen35moe.attention.head_count_kv=2, qwen35moe.expert_count=256, qwen35moe.expert_used_count=8, qwen35moe.attention.key_length=256, qwen35moe.attention.value_length=256, qwen35moe.
+
+=== TOTAUX FAMILLES (mesurés, GiB) ===
+  routed        22.32
+  shared         0.13
+  backbone       1.10
+  output         0.39
+  embd           0.33
+  n_blk          0.00
+  routed/couche 0.544 GiB | /expert 2.28 MB
+  TOTAL fichier estimé 24.26 GiB (pondéré bpw)
+
+=== HISTOGRAMME TYPES ===
+  Q5_K         94 tensors     16.31 GiB
+  Q6_K        218 tensors      6.91 GiB
+  Q8_0        131 tensors      0.96 GiB
+  F32         308 tensors      0.08 GiB
+  BF16          2 tensors      0.00 GiB
+
+=== MATRICE PAR COUCHE (mesurée) ===
+  blk  0: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  1: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  2: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  3: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  4: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  5: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk  6: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk  7: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk  8: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk  9: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 10: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 11: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 12: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 13: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 14: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 15: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 16: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 17: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 18: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 19: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 20: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 21: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 22: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 23: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 24: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 25: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 26: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 27: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 28: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 29: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 30: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 31: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 32: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 33: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 34: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 35: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 36: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 37: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 38: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 39: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 40: gu=Q8_0      down=Q8_0      shexp=Q8_0      backbone=Q8_0      | routed 0.797 GiB
+
+=== PROFIL DECODE (contexte 8192 , kv turbo4 , skew 0.6 ) ===
+
+[1080] GTX 1080 8GB (dev, sm_61)
+  pool experts total 22.32 GiB | /expert 2.28 MB
+  permanent (backbone+shared+out+embd) 1.94 GiB | KV 0.32 GiB
+  budget experts VRAM 4.30 GiB -> 49/256 résidents -> hit 0.37
+  miss 5.0 experts/tok : compute CPU (H2D 0.73 ms vs CPU 0.23 ms) -> t_miss 0.23 ms
+  GPU actif 10.20 ms + miss 0.23 ms -> **95.9 t/s**
+
+[5070] RTX 5070 Laptop 8GB (cible, sm_120)
+  pool experts total 22.32 GiB | /expert 2.28 MB
+  permanent (backbone+shared+out+embd) 1.94 GiB | KV 0.32 GiB
+  budget experts VRAM 4.30 GiB -> 49/256 résidents -> hit 0.37
+  miss 5.0 experts/tok : compute CPU (H2D 0.36 ms vs CPU 0.23 ms) -> t_miss 0.23 ms
+  GPU actif 12.67 ms + miss 0.23 ms -> **77.5 t/s**
+
+[CAVEATS] (1) header = variante mudler Balanced (recette publique) — le fichier LuffyTheFox 'Genesis-MTP-APEX' est gated : memes shapes attendues (meme arch 35B-A3B), quants possiblement differents selon la recette exacte du repo. (2) KV f16 borne haute : couches GDN = state recurrent < KV attention. (3) skew/h2d/cpu_bw = ASSUMED -> calibration microbench_h2d.py + trace routing sur cible.
+
+[OK] script: profile_apex_matrix.py
