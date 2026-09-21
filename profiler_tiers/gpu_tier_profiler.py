@@ -41,7 +41,8 @@ MACHINES = {
         "kv_types_avail": ["f16", "q8_0", "turbo4"],
         "kv_forbidden": ["turbo3-as-K"],
         "experts_per_layer": 256,
-        "expert_bytes_q4": 2_450_000,  # 2.45 MB/expert Q4/NVFP4 (35B-A3B)
+        "expert_bytes_q4": 2_450_000,    # 2.45 MB/expert Q4_0 (35B-A3B)
+        "expert_bytes_nvfp4": 1_250_000, # 1.25 MB/expert NVFP4 (FP4 natif Blackwell sm_120)
         "n_layers": 40,
         "backend": "CUDA sm_120",
         "npu": True,                   # XDNA2 sur-package Strix (pas de PCIe NPU<->GPU)
@@ -61,6 +62,7 @@ MACHINES = {
         "kv_forbidden": ["turbo3-as-K"],
         "experts_per_layer": 256,
         "expert_bytes_q4": 2_450_000,
+        "expert_bytes_nvfp4": 1_250_000, # théorique sur Pascal (pas de FP4 natif — validation logique seule)
         "n_layers": 40,
         "backend": "CUDA sm_61 (build-cu61, patch D512 smem)",
         "npu": False,
@@ -201,11 +203,13 @@ def mode_plan(args):
 
     # Résidence experts (MoE)
     if mdl["experts"] > 0:
-        per_exp = m["expert_bytes_q4"]
+        fmt = getattr(args, "expert_fmt", "q4")
+        per_exp = m["expert_bytes_nvfp4"] if fmt == "nvfp4" else m["expert_bytes_q4"]
         max_res_by_vram = int(kv_after / per_exp / mdl["n_layers"])
         n_res_eff = min(n_res, mdl["experts"], max_res_by_vram)
         hit = gpu_hit_vs_overflow(mdl, m, n_res_eff)
-        print(f"[EXPERTS] {mdl['experts']}/couche × {per_exp/1e6:.2f} MB | résident max VRAM: {max_res_by_vram}/couche")
+        fmt_note = " (FP4 natif Blackwell)" if fmt == "nvfp4" and m["sm"] == "sm_120" else (" (émul — Pascal sans FP4 natif)" if fmt == "nvfp4" else "")
+        print(f"[EXPERTS] {mdl['experts']}/couche × {per_exp/1e6:.2f} MB {fmt}{fmt_note} | résident max VRAM: {max_res_by_vram}/couche")
         print(f"  -> résidence {n_res_eff}/couche = hit GPU {hit:.2f} | overflow {1-hit:.2f}")
 
         # GOULOT PCIe : overflow experts streamés
@@ -272,6 +276,7 @@ def main():
     p.add_argument("--model", choices=list(MODELS), default="35b")
     p.add_argument("--kv", default="turbo4", choices=["f16", "q8_0", "turbo3", "turbo4"])
     p.add_argument("--experts", type=int, default=64)
+    p.add_argument("--expert-fmt", default="q4", choices=["q4", "nvfp4"])
     p.add_argument("--ctx", type=int, default=8192)
     p.set_defaults(fn=mode_plan)
     p = sub.add_parser("bench"); p.add_argument("--machine", choices=list(MACHINES), required=True)

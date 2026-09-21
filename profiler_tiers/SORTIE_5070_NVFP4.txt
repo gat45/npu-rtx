@@ -1,0 +1,39 @@
+=== PLAN RTX 5070 Laptop 8 GB (machine cible, CUDA sm_120) ===
+backend CUDA sm_120 | BW théo 384.0 GB/s | BW eff 165.0 GB/s (measured-roofline-FLM-9B-rewritten-5070)
+PCIe gen5 x8 = 31.5 GB/s (goulot D2/FATE streaming experts)
+
+[KV] Qwen3.5-35B-A3B ctx=8192 turbo4: 0.16 GiB (×0.258 vs f16 — validé Phase 2, texte ≈ f16)
+[VRAM] budget utile 6.85 GiB -> après KV: 6.69 GiB pour poids+experts
+[EXPERTS] 256/couche × 2.45 MB q4 | résident max VRAM: 73/couche
+  -> résidence 64/couche = hit GPU 0.25 | overflow 0.75
+  [PCIe] overflow/token ≈ 14.7 MB -> 0.47 ms/tok (goulot dur si > 5 ms)
+  [NPU XDNA2] overflow traitable sur NPU (coût ≈ 16× hit GPU, sur-package Strix: zéro PCIe) — Voie A double-flux 61.5 t/s agrégat simulé
+
+[BUS MEMOIRE] octets/token ≈ 1.50 GB -> decode ≈ 109.6 t/s (BW-bound, goulot #2)
+  Voie A (5070+NPU double-flux): 61.5 t/s agrégat (simulé Phase 1, à confirmer machine cible)
+=== PLAN RTX 5070 Laptop 8 GB (machine cible, CUDA sm_120) ===
+backend CUDA sm_120 | BW théo 384.0 GB/s | BW eff 165.0 GB/s (measured-roofline-FLM-9B-rewritten-5070)
+PCIe gen5 x8 = 31.5 GB/s (goulot D2/FATE streaming experts)
+
+[KV] Qwen3.5-35B-A3B ctx=8192 turbo4: 0.16 GiB (×0.258 vs f16 — validé Phase 2, texte ≈ f16)
+[VRAM] budget utile 6.85 GiB -> après KV: 6.69 GiB pour poids+experts
+[EXPERTS] 256/couche × 1.25 MB nvfp4 (FP4 natif Blackwell) | résident max VRAM: 143/couche
+  -> résidence 143/couche = hit GPU 0.56 | overflow 0.44
+  [PCIe] overflow/token ≈ 4.4 MB -> 0.14 ms/tok (goulot dur si > 5 ms)
+  [NPU XDNA2] overflow traitable sur NPU (coût ≈ 16× hit GPU, sur-package Strix: zéro PCIe) — Voie A double-flux 61.5 t/s agrégat simulé
+
+[BUS MEMOIRE] octets/token ≈ 1.51 GB -> decode ≈ 109.6 t/s (BW-bound, goulot #2)
+  Voie A (5070+NPU double-flux): 61.5 t/s agrégat (simulé Phase 1, à confirmer machine cible)
+=== PLAN RTX 5070 Laptop 8 GB (machine cible, CUDA sm_120) ===
+backend CUDA sm_120 | BW théo 384.0 GB/s | BW eff 165.0 GB/s (measured-roofline-FLM-9B-rewritten-5070)
+PCIe gen5 x8 = 31.5 GB/s (goulot D2/FATE streaming experts)
+
+[KV] Qwen3.5-35B-A3B ctx=65536 turbo4: 1.29 GiB (×0.258 vs f16 — validé Phase 2, texte ≈ f16)
+[VRAM] budget utile 6.85 GiB -> après KV: 5.57 GiB pour poids+experts
+[EXPERTS] 256/couche × 1.25 MB nvfp4 (FP4 natif Blackwell) | résident max VRAM: 119/couche
+  -> résidence 119/couche = hit GPU 0.46 | overflow 0.54
+  [PCIe] overflow/token ≈ 5.4 MB -> 0.17 ms/tok (goulot dur si > 5 ms)
+  [NPU XDNA2] overflow traitable sur NPU (coût ≈ 16× hit GPU, sur-package Strix: zéro PCIe) — Voie A double-flux 61.5 t/s agrégat simulé
+
+[BUS MEMOIRE] octets/token ≈ 1.50 GB -> decode ≈ 109.7 t/s (BW-bound, goulot #2)
+  Voie A (5070+NPU double-flux): 61.5 t/s agrégat (simulé Phase 1, à confirmer machine cible)
