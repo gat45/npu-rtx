@@ -158,6 +158,33 @@ def profile(m, M, args, per_layer, totals):
                 kv_gib=kv_bytes/2**30, per_exp_mb=per_exp/1e6, pool_gib=totals["routed"]/2**30,
                 t_h2d=t_h2d*1000, t_cpu=t_cpu*1000)
 
+AXES = """
+=== AXES DE PROFILAGE (variables) — statut par contrainte matérielle 1080 ===
+[MEMOIRE]
+  vram_gb=8.0 MEASURED | bw_eff_gbs=205 MEASURED-PascalTypical | pool_experts GiB MEASURED(header)
+  per_expert MB MEASURED(header) | permanent GiB MEASURED | kv GiB MEASURED(f16, borne haute GDN)
+  compute_buffer GiB ASSUMED(0.5) | rail GiB ASSUMED(0.3) | residency N MEASURED(budget) | hit MEASURED(skew trace) / uniforme borne
+[ROUTING]
+  skew MEASURED(0.305 Marco-8B, transfert qwen3moe) | overlap inter-tokens MEASURED(2.5%) | coverage@couche MEASURED(Marco) / UNKNOWN(35B)
+  hot-set statique top-N MEASURED(Marco) | LRU dynamique INUTILE(measure)
+[EXPERTS]
+  quant par couche MEASURED(header: Q5_K/Q6_K/Q8_0/F16) | requant cible --quant MODEL(bpw exact)
+  bytes/expert MEASURED | decision miss (H2D vs compute CPU) MODEL(bw pcie, cpu_bw ASSUMED 50 GB/s)
+[PCIe / BUS]
+  pcie gen3 x16 = 15.75 GB/s MEASURED-datasheet | h2d pageable ASSUMED | h2d pinned UNKNOWN->microbench_h2d.py
+  DMA overlap MODEL(critical_path) | prefetch accuracy UNKNOWN->trace cible
+[GPU COMPUTE]
+  t_gpu = actif/BW_eff MODEL(BW-bound) | tensor cores FP8: ABSENT(sm_61) -> FP8=stockage+dequant only
+  quant KV dispo: f16/q8_0/turbo4 MEASURED(build cu61) | K=turbo3 INTERDIT(bug upstream)
+[FP8 SPECIFIQUE]
+  bpw=8.5 (bloc 32, scale f32) | > Q5_K(5.5) en stockage | gain PPL marginal vs Q6_K | SANS tensor cores: decode BW-bound legerement PLUS LENT (plus d'octets a lire)
+  usage legitime: eval PPL de reference / future machine Hopper+ | verdit 1080: NON RECOMMANDER pour decode
+[NPU/XDNA2]
+  ABSENT sur 1080 (Voie A inactive) | flag --npu-* requis si transpose 5070
+[CALIBRATION RESTANTE]
+  cpu_bw, h2d pinned/pageable, skew 35B reel, PPL reel (perplexite a mesurer, pas modele)
+"""
+
 # ---------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -169,7 +196,17 @@ def main():
     ap.add_argument("--rail", type=float, default=0.3)
     ap.add_argument("--machine", default="both", choices=["1080", "5070", "both"])
     ap.add_argument("--matrix", action="store_true", help="afficher la matrice layer par layer")
+    ap.add_argument("--per-layer", action="store_true", help="table pool experts par couche")
+    ap.add_argument("--layer", type=int, default=None, help="détail par expert de la couche N")
+    ap.add_argument("--list-axes", action="store_true", help="liste des axes de profilage + statuts")
+    ap.add_argument("--quant", default=None,
+                    choices=["Q4_0", "Q4_K", "Q5_K", "Q6_K", "Q8_0", "FP8", "turbo4"],
+                    help="requant cible des experts routés (le reste inchangé)")
     args = ap.parse_args()
+
+    if args.list_axes:
+        print(AXES)
+        return
 
     H = parse_header(args.header)
     kvs = H["kvs"]
@@ -184,6 +221,7 @@ def main():
           if k.startswith(("general.", f"{arch}.expert", f"{arch}.embedding", f"{arch}.attention.key", f"{arch}.attention.value", f"{arch}.attention.head")) )[:600])
 
     fam_bytes = {}
+    fam_nel = {}
     per_layer = {}
     rows = []
     for t in H["tensors"]:
@@ -193,9 +231,10 @@ def main():
         for d in t["ne"]: nel *= d
         nbytes = nel * bpw / 8.0
         fam_bytes[f] = fam_bytes.get(f, 0) + nbytes
+        fam_nel[f] = fam_nel.get(f, 0) + nel
         lay = t["name"].split(".")[1] if t["name"].startswith("blk.") else None
         if lay is not None:
-            per_layer.setdefault(lay, {}).setdefault(f, [0, tname, tuple(t["ne"])])
+            per_layer.setdefault(lay, {}).setdefault(f, [0, tname, tuple(t["ne"]), t["offset"]])
             per_layer[lay][f][0] += nbytes
         rows.append((t["name"], tname, nbytes, tuple(t["ne"])))
 
@@ -209,6 +248,22 @@ def main():
     routed_per_layer = (fam_bytes.get("routed_gu", 0) + fam_bytes.get("routed_down", 0)) / max(1, n_blk)
     per_exp = routed_per_layer / n_exp
     totals["n_blk"] = n_blk
+
+    # ---- requant experts routés (modèle : scale bpw, shapes inchangées)
+    if args.quant and totals["routed"] > 0:
+        TARGET_BPW = {"Q4_0": 4.5, "Q4_K": 4.5, "Q5_K": 5.5, "Q6_K": 6.5625,
+                      "Q8_0": 8.5, "FP8": 8.5, "turbo4": 4.0}
+        orig_bpw = totals["routed"] * 8.0 / fam_nel.get("routed_gu", 0) + fam_nel.get("routed_down", 0) * 0 if False else \
+            totals["routed"] * 8.0 / (fam_nel.get("routed_gu", 1) + fam_nel.get("routed_down", 0))
+        scale = TARGET_BPW[args.quant] / orig_bpw
+        totals["routed"] *= scale
+        for lay in per_layer:
+            for f in ("routed_gu", "routed_down"):
+                if f in per_layer[lay]:
+                    per_layer[lay][f][0] *= scale
+        routed_per_layer *= scale
+        per_exp *= scale
+        print(f"\n[REQUANT] experts routés -> {args.quant} ({TARGET_BPW[args.quant]:.2f} bpw, origine {orig_bpw:.2f} bpw, scale {scale:.3f})")
 
     print("\n=== TOTAUX FAMILLES (mesurés, GiB) ===")
     for k, v in totals.items(): print(f"  {k:<10} {v/2**30:8.2f}")
@@ -238,6 +293,31 @@ def main():
             rg_b = d.get("routed_gu", [0])[0] + d.get("routed_down", [0])[0]
             print(f"  blk{lay:>3}: gu={q('routed_gu'):<9} down={q('routed_down'):<9} "
                   f"shexp={q('shared_down'):<9} backbone={q('backbone'):<9} | routed {rg_b/2**30:.3f} GiB")
+
+    if args.per_layer:
+        print("\n=== POOL EXPERTS PAR COUCHE (" + (args.quant or "recette origine") + ") ===")
+        print(f"  {'blk':>4} {'routed GiB':>10} {'MB/expert':>9} {'gate/up':>8} {'down':>8}")
+        for lay in sorted(per_layer, key=int):
+            d = per_layer[lay]
+            rb = d.get("routed_gu", [0])[0] + d.get("routed_down", [0])[0]
+            print(f"  {lay:>4} {rb/2**30:10.3f} {rb/n_exp/1e6:9.2f} "
+                  f"{d.get('routed_gu',[0,'-'])[1]:>8} {d.get('routed_down',[0,'-'])[1]:>8}")
+
+    if args.layer is not None:
+        lay = str(args.layer)
+        if lay not in per_layer:
+            raise SystemExit(f"couche {lay} absente")
+        d = per_layer[lay]
+        print(f"\n=== DETAIL EXPERTS blk.{lay} (offsets fichier réels) ===")
+        for f, label in (("routed_gu", "ffn gate/up"), ("routed_down", "ffn down")):
+            if f not in d:
+                continue
+            _, tname, ne, off = d[f]
+            slice_b = d[f][0] / n_exp
+            print(f"  {label}: type {tname} shape {ne} | slice/expert {slice_b/1e6:.2f} MB")
+            for e in list(range(4)) + [n_exp - 1]:
+                print(f"    expert {e:>3}: offset {off + e*d[f][0]/n_exp:>14.0f} B, {slice_b/1e6:.2f} MB")
+            print(f"    … {n_exp} experts, total {d[f][0]/2**30:.3f} GiB")
 
     print("\n=== PROFIL DECODE (contexte", args.context, ", kv", args.kv, ", skew", args.skew, ") ===")
     for mid in ([args.machine] if args.machine != "both" else ["1080", "5070"]):

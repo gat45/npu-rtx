@@ -1,0 +1,114 @@
+
+=== AXES DE PROFILAGE (variables) — statut par contrainte matérielle 1080 ===
+[MEMOIRE]
+  vram_gb=8.0 MEASURED | bw_eff_gbs=205 MEASURED-PascalTypical | pool_experts GiB MEASURED(header)
+  per_expert MB MEASURED(header) | permanent GiB MEASURED | kv GiB MEASURED(f16, borne haute GDN)
+  compute_buffer GiB ASSUMED(0.5) | rail GiB ASSUMED(0.3) | residency N MEASURED(budget) | hit MEASURED(skew trace) / uniforme borne
+[ROUTING]
+  skew MEASURED(0.305 Marco-8B, transfert qwen3moe) | overlap inter-tokens MEASURED(2.5%) | coverage@couche MEASURED(Marco) / UNKNOWN(35B)
+  hot-set statique top-N MEASURED(Marco) | LRU dynamique INUTILE(measure)
+[EXPERTS]
+  quant par couche MEASURED(header: Q5_K/Q6_K/Q8_0/F16) | requant cible --quant MODEL(bpw exact)
+  bytes/expert MEASURED | decision miss (H2D vs compute CPU) MODEL(bw pcie, cpu_bw ASSUMED 50 GB/s)
+[PCIe / BUS]
+  pcie gen3 x16 = 15.75 GB/s MEASURED-datasheet | h2d pageable ASSUMED | h2d pinned UNKNOWN->microbench_h2d.py
+  DMA overlap MODEL(critical_path) | prefetch accuracy UNKNOWN->trace cible
+[GPU COMPUTE]
+  t_gpu = actif/BW_eff MODEL(BW-bound) | tensor cores FP8: ABSENT(sm_61) -> FP8=stockage+dequant only
+  quant KV dispo: f16/q8_0/turbo4 MEASURED(build cu61) | K=turbo3 INTERDIT(bug upstream)
+[FP8 SPECIFIQUE]
+  bpw=8.5 (bloc 32, scale f32) | > Q5_K(5.5) en stockage | gain PPL marginal vs Q6_K | SANS tensor cores: decode BW-bound legerement PLUS LENT (plus d'octets a lire)
+  usage legitime: eval PPL de reference / future machine Hopper+ | verdit 1080: NON RECOMMANDER pour decode
+[NPU/XDNA2]
+  ABSENT sur 1080 (Voie A inactive) | flag --npu-* requis si transpose 5070
+[CALIBRATION RESTANTE]
+  cpu_bw, h2d pinned/pageable, skew 35B reel, PPL reel (perplexite a mesurer, pas modele)
+
+
+################ 35B GENESIS HERMES MTP â€” PROFIL 1080 layerÃ—expertÃ—quant (skew MEASURED 0.305) ################
+
+=== MATRICE PAR COUCHE (mesurée) ===
+  blk  0: gu=Q6_K      down=Q8_0      shexp=Q8_0      backbone=F16       | routed 0.676 GiB
+  blk  1: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q8_0      | routed 0.615 GiB
+  blk  2: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  3: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  4: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk  5: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk  6: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk  7: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk  8: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk  9: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 10: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 11: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 12: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 13: gu=Q5_K      down=Q8_0      shexp=Q8_0      backbone=Q6_K      | routed 0.609 GiB
+  blk 14: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 15: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 16: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 17: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 18: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 19: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 20: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 21: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 22: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 23: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 24: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 25: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 26: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 27: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 28: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 29: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 30: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 31: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 32: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 33: gu=Q5_K      down=Q5_K      shexp=Q8_0      backbone=Q6_K      | routed 0.516 GiB
+  blk 34: gu=Q5_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.549 GiB
+  blk 35: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 36: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 37: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 38: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 39: gu=Q6_K      down=Q6_K      shexp=Q8_0      backbone=Q6_K      | routed 0.615 GiB
+  blk 40: gu=Q8_0      down=Q8_0      shexp=Q8_0      backbone=Q8_0      | routed 0.797 GiB
+[1080] GTX 1080 8GB (dev, sm_61)
+  pool experts total 22.87 GiB | /expert 2.34 MB
+  permanent (backbone+shared+out+embd) 1.98 GiB | KV 0.64 GiB
+  miss 3.3 experts/tok : compute CPU (H2D 0.49 ms vs CPU 0.16 ms) -> t_miss 0.16 ms
+  GPU actif 10.41 ms + miss 0.16 ms -> **94.7 t/s**
+
+################ REQUANTS EXPERTS (backbone Q6_K inchangÃ©) ################
+--- requant experts = Q4_0 ---
+[REQUANT] experts routés -> Q4_0 (4.50 bpw, origine 5.95 bpw, scale 0.756)
+  pool experts total 17.30 GiB | /expert 1.77 MB
+  GPU actif 10.40 ms + miss 0.10 ms -> **95.2 t/s**
+--- requant experts = Q5_K ---
+[REQUANT] experts routés -> Q5_K (5.50 bpw, origine 5.95 bpw, scale 0.924)
+  pool experts total 21.14 GiB | /expert 2.16 MB
+  GPU actif 10.40 ms + miss 0.14 ms -> **94.9 t/s**
+--- requant experts = Q6_K ---
+[REQUANT] experts routés -> Q6_K (6.56 bpw, origine 5.95 bpw, scale 1.103)
+  pool experts total 25.22 GiB | /expert 2.58 MB
+  GPU actif 10.41 ms + miss 0.18 ms -> **94.4 t/s**
+--- requant experts = Q8_0 ---
+[REQUANT] experts routés -> Q8_0 (8.50 bpw, origine 5.95 bpw, scale 1.429)
+  pool experts total 32.67 GiB | /expert 3.34 MB
+  GPU actif 10.42 ms + miss 0.26 ms -> **93.7 t/s**
+--- requant experts = FP8 ---
+[REQUANT] experts routés -> FP8 (8.50 bpw, origine 5.95 bpw, scale 1.429)
+  pool experts total 32.67 GiB | /expert 3.34 MB
+  GPU actif 10.42 ms + miss 0.26 ms -> **93.7 t/s**
+--- requant experts = turbo4 ---
+[REQUANT] experts routés -> turbo4 (4.00 bpw, origine 5.95 bpw, scale 0.672)
+  pool experts total 15.38 GiB | /expert 1.57 MB
+  GPU actif 10.39 ms + miss 0.09 ms -> **95.4 t/s**
+
+--- dÃ©tail par expert blk.13 (down Q8_0 exception) ---
+=== DETAIL EXPERTS blk.13 (offsets fichier réels) ===
+  ffn gate/up: type Q5_K shape (2048, 512, 256) | slice/expert 1.44 MB
+    expert   0: offset     9396058624 B, 1.44 MB
+    expert   1: offset     9397500416 B, 1.44 MB
+    expert   2: offset     9398942208 B, 1.44 MB
+    expert   3: offset     9400384000 B, 1.44 MB
+    expert 255: offset     9763715584 B, 1.44 MB
+    … 256 experts, total 0.344 GiB
+  ffn down: type Q8_0 shape (512, 2048, 256) | slice/expert 1.11 MB
+    expert   0: offset     9109731840 B, 1.11 MB
