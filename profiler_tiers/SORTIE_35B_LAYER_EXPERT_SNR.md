@@ -2,8 +2,8 @@
 
 **Date** : 2026-09-21 · **Source** : `D:/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-Q8_K_P.gguf` (40.61 GiB, recette Q8_0/F16 mesurée)
 **Méthode** : `requant_experts.py` (d2_layer_profiler_v3 streaming) — SNR **exact** par expert
-(quantize→dequantize gguf-py vs source Q8_0/F16), **30 720 experts × 3 tenseurs = 92 160 mesures**,
-768 tenseurs, 40 couches. Aucune estimation théorique : tout est mesuré.
+(quantize→dequantize gguf-py vs source Q8_0/F16), **30 720 experts × 3 familles = 92 160 mesures**,
+120 tenseurs experts (40 couches × gate/up/down), 40 couches. Aucune estimation théorique : tout est mesuré.
 
 ## Candidat chiffré
 
